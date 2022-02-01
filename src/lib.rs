@@ -39,6 +39,25 @@ impl<T> VecWithPositions<T> {
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.vec.get_mut(index)
     }
+
+    pub fn new_position(&mut self, value: usize) -> usize {
+        let pos = self.positions.len();
+        self.positions.push(value);
+        pos
+    }
+    pub fn move_position(&mut self, pos_index: usize, value: usize) {
+        self.positions[pos_index] = value;
+    }
+    pub fn position_index(&self, pos_index: usize) -> usize {
+        self.positions[pos_index]
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.vec.iter()
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.vec.iter_mut()
+    }
 }
 
 #[cfg(test)]
@@ -48,6 +67,15 @@ mod tests {
     #[test]
     fn test() {
         let mut v = VecWithPositions::new();
-        v.append((0..10).collect());
+        let mut input = (0..10).collect::<Vec<i32>>();
+        v.append(&mut input);
+        let mut _pos3 = v.new_position(3);
+        let mut _pos5 = v.new_position(5);
+        let mut _pos7 = v.new_position(7);
+        v.remove(5);
+        assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0,1,2,3,4,6,7,8,9]);
+        assert_eq!(v.position_index(0), 3);
+        assert_eq!(v.position_index(1), 5);
+        assert_eq!(v.position_index(2), 6);
     }
 }
