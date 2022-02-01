@@ -52,6 +52,13 @@ impl<T> VecWithPositions<T> {
         self.positions[pos_index]
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.vec.iter()
     }
