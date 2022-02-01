@@ -40,3 +40,8 @@ impl<T> VecWithPositions<T> {
         self.vec.get_mut(index)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+}
