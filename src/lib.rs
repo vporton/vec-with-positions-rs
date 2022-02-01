@@ -24,7 +24,7 @@ impl<T> VecWithPositions<T> {
     pub fn remove(&mut self, index: usize) -> T {
         let result = self.vec.remove(index);
         for pos in self.positions.iter_mut() {
-            if *pos >= index && *pos != 0 {
+            if *pos > index {
                 *pos -= 1;
             }
         }
@@ -43,5 +43,11 @@ impl<T> VecWithPositions<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::VecWithPositions;
 
+    #[test]
+    fn test() {
+        let mut v = VecWithPositions::new();
+        v.append((0..10).collect());
+    }
 }
