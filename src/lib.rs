@@ -4,7 +4,7 @@
 /// Implemented partially.
 
 pub struct VecWithPositions<T> {
-    vec: Vec<T>,
+    vec: Vec<T>, // Apparently, I violated single-responsibility principle: any container-like object would suit.
     positions: Vec<usize>,
 }
 
