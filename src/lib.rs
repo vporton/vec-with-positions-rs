@@ -50,7 +50,7 @@ pub trait VecWithPositions<'a, T, Positions: Iterator<Item = &'a mut usize>> {
     }
 }
 
-struct VecWithOnePosition<T> {
+pub struct VecWithOnePosition<T> {
     vec: Vec<T>,
     position: usize,
 }
