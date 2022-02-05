@@ -16,14 +16,17 @@ pub trait VecWithPositions<'a, T, Positions: Iterator<Item = &'a mut usize>> {
     fn append(&mut self, other: &mut Vec<T>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, index: usize) -> T {
+    fn remove(&'a mut self, index: usize) -> Option<T> {
+        if self.vec().is_empty() {
+            return None;
+        }
         let result = self.vec_mut().remove(index);
         for pos in self.positions_mut() {
             if *pos > index {
                 *pos -= 1;
             }
         }
-        result
+        Some(result)
     }
     fn clear(&mut self) {
         self.vec_mut().clear();
