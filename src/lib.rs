@@ -20,13 +20,18 @@ pub trait VecWithPositions<'a, T, Positions: Iterator<Item = &'a mut usize>> {
         if self.vec().is_empty() {
             return None;
         }
-        let result = self.vec_mut().remove(index);
+        let result = if index < self.vec().len() {
+            let result = self.vec_mut().remove(index);
+            Some(result)
+        } else {
+            None
+        };
         for pos in self.positions_mut() {
             if *pos > index {
                 *pos -= 1;
             }
         }
-        Some(result)
+        result
     }
     fn clear(&mut self) {
         self.vec_mut().clear();
