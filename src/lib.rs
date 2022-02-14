@@ -1,5 +1,10 @@
 use std::iter::{once, Once};
 
+#[derive(Clone, Copy)]
+pub struct Position(usize); // TODO: pub?
+
+// FIXME: Set positions to usize::max.
+
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.
 ///
@@ -8,8 +13,8 @@ use std::iter::{once, Once};
 /// TODO: `Position` enum type to differentiate positions and indexes.
 pub trait VecWithPositions<'a, T>
 {
-    type Positions: Iterator<Item = &'a usize> + 'a;
-    type PositionsMut: Iterator<Item = &'a mut usize> + 'a;
+    type Positions: Iterator<Item = &'a Position> + 'a;
+    type PositionsMut: Iterator<Item = &'a mut Position> + 'a;
 
     fn vec(&self) -> &Vec<T>;
     fn vec_mut(&mut self) -> &mut Vec<T>;
@@ -24,8 +29,8 @@ pub trait VecWithPositions<'a, T>
     fn remove(&'a mut self, index: usize) -> T {
         let result = self.vec_mut().remove(index);
         for pos in self.positions_mut() {
-            if *pos > index {
-                *pos -= 1;
+            if (*pos).0 > index {
+                (*pos).0 -= 1;
             }
         }
         result
@@ -60,27 +65,27 @@ pub trait VecWithPositions<'a, T>
 
 pub struct VecWithOnePosition<T> {
     vec: Vec<T>,
-    position: usize,
+    position: Position,
 }
 
 impl<T> VecWithOnePosition<T> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
-            position: 0,
+            position: Position(usize::MAX),
         }
     }
-    pub fn get_position(&self) -> usize {
+    pub fn get_position(&self) -> Position {
         self.position
     }
-    pub fn set_position(&mut self, pos: usize) {
+    pub fn set_position(&mut self, pos: Position) {
         self.position = pos;
     }
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
-    type Positions = Once<&'a usize>;
-    type PositionsMut = Once<&'a mut usize>;
+    type Positions = Once<&'a Position>;
+    type PositionsMut = Once<&'a mut Position>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -97,7 +102,7 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
 
 pub struct VecWithPositionsVector<T> {
     vec: Vec<T>,
-    positions: Vec<usize>,
+    positions: Vec<Position>,
 }
 
 impl<T> VecWithPositionsVector<T> {
@@ -107,17 +112,17 @@ impl<T> VecWithPositionsVector<T> {
             positions: Vec::new(),
         }
     }
-    pub fn get_position(&self, index: usize) -> usize {
+    pub fn get_position(&self, index: usize) -> Position {
         self.positions[index]
     }
-    pub fn set_position(&mut self, index: usize, pos: usize) {
+    pub fn set_position(&mut self, index: usize, pos: Position) {
         self.positions[index] = pos;
     }
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
-    type Positions = std::slice::Iter<'a, usize>;
-    type PositionsMut = std::slice::IterMut<'a, usize>;
+    type Positions = std::slice::Iter<'a, Position>;
+    type PositionsMut = std::slice::IterMut<'a, Position>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -140,8 +145,8 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// Despite of the name, positions can be the same, if shortage of the pool.
 pub struct VecWithPositionsAllDifferent<T> {
     vec_with_positions: VecWithPositionsVector<T>,
-    range_start: usize,
-    range_end: usize, // wraps around circularly
+    range_start: Position,
+    range_end: Position, // wraps around circularly
 }
 
 impl<T> VecWithPositionsAllDifferent<T> {
@@ -156,17 +161,17 @@ impl<T> VecWithPositionsAllDifferent<T> {
         self.vec_with_positions.remove(index);
     }
     fn clear(&mut self) {
-        self.range_start = 0;
-        self.range_end = 0;
+        self.range_start = Position(0);
+        self.range_end = Position(0);
         self.vec_with_positions.clear();
     }
     fn len(&self) -> usize {
         self.vec_with_positions.len()
     }
-    fn new_position(&mut self) -> usize {
-        self.range_end += 1;
-        if self.range_end == self.len() {
-            self.range_end = 0;
+    fn new_position(&mut self) -> Position {
+        self.range_end.0 += 1;
+        if self.range_end.0 == self.len() {
+            self.range_end.0 = 0;
         }
         self.range_end
     }
