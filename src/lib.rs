@@ -4,28 +4,25 @@ use std::iter::{once, Once};
 /// has deletions or insertions.
 ///
 /// Implemented partially.
+///
+/// TODO: `Position` enum type to differentiate positions and indexes.
+pub trait VecWithPositions<'a, T>
+{
+    type Positions: Iterator<Item = &'a usize> + 'a;
+    type PositionsMut: Iterator<Item = &'a mut usize> + 'a;
 
-pub trait VecWithPositions<'a, T, Positions: Iterator<Item = &'a mut usize>> {
     fn vec(&self) -> &Vec<T>;
     fn vec_mut(&mut self) -> &mut Vec<T>;
-    fn positions(&'a self) -> Box<dyn Iterator<Item = &'a usize> + 'a>;
-    fn positions_mut(&'a mut self) -> Box<dyn Iterator<Item = &'a mut usize> + 'a>;
+    fn positions(&'a self) -> Self::Positions;
+    fn positions_mut(&'a mut self) -> Self::PositionsMut;
     fn push(&mut self, value: T) {
         self.vec_mut().push(value)
     }
     fn append(&mut self, other: &mut Vec<T>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, index: usize) -> Option<T> {
-        if self.vec().is_empty() {
-            return None;
-        }
-        let result = if index < self.vec().len() {
-            let result = self.vec_mut().remove(index);
-            Some(result)
-        } else {
-            None
-        };
+    fn remove(&'a mut self, index: usize) -> T {
+        let result = self.vec_mut().remove(index);
         for pos in self.positions_mut() {
             if *pos > index {
                 *pos -= 1;
@@ -41,6 +38,9 @@ pub trait VecWithPositions<'a, T, Positions: Iterator<Item = &'a mut usize>> {
     }
     fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.vec_mut().get_mut(index)
+    }
+    fn set(&mut self, index: usize, value: T) {
+        self.vec_mut()[index] = value;
     }
 
     fn is_empty(&self) -> bool {
@@ -67,7 +67,7 @@ impl<T> VecWithOnePosition<T> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
-            position: 0
+            position: 0,
         }
     }
     pub fn get_position(&self) -> usize {
@@ -78,18 +78,106 @@ impl<T> VecWithOnePosition<T> {
     }
 }
 
-impl<'a, T> VecWithPositions<'a, T, Once<&'a mut usize>> for VecWithOnePosition<T> {
+impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
+    type Positions = Once<&'a usize>;
+    type PositionsMut = Once<&'a mut usize>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
     fn vec_mut(&mut self) -> &mut Vec<T> {
         &mut self.vec
     }
-    fn positions(&'a self) -> Box<dyn Iterator<Item = &'a usize> + 'a> {
-        Box::new(once(&self.position))
+    fn positions(&'a self) -> Self::Positions {
+        once(&self.position)
     }
-    fn positions_mut(&'a mut self) -> Box<dyn Iterator<Item = &'a mut usize> + 'a>  {
-        Box::new(once(&mut self.position))
+    fn positions_mut(&'a mut self) -> Self::PositionsMut {
+        once(&mut self.position)
+    }
+}
+
+pub struct VecWithPositionsVector<T> {
+    vec: Vec<T>,
+    positions: Vec<usize>,
+}
+
+impl<T> VecWithPositionsVector<T> {
+    pub fn new() -> Self {
+        Self {
+            vec: Vec::new(),
+            positions: Vec::new(),
+        }
+    }
+    pub fn get_position(&self, index: usize) -> usize {
+        self.positions[index]
+    }
+    pub fn set_position(&mut self, index: usize, pos: usize) {
+        self.positions[index] = pos;
+    }
+}
+
+impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
+    type Positions = std::slice::Iter<'a, usize>;
+    type PositionsMut = std::slice::IterMut<'a, usize>;
+    fn vec(&self) -> &Vec<T> {
+        &self.vec
+    }
+    fn vec_mut(&mut self) -> &mut Vec<T> {
+        &mut self.vec
+    }
+    fn positions(&'a self) -> Self::Positions {
+        self.positions.iter()
+    }
+    fn positions_mut(&'a mut self) -> Self::PositionsMut {
+        self.positions.iter_mut()
+    }
+}
+
+/// Example: Several threads use a pool of network nodes to download from.
+/// From the pool we "view" a range of currently used nodes, one by thread.
+/// If a note is invalidated, it is removed from the list and the lacking thread
+/// is moved to the end of the list receiving a new node.
+/// Nodes later than it in the range decrease their positions.
+/// Despite of the name, positions can be the same, if shortage of the pool.
+pub struct VecWithPositionsAllDifferent<T> {
+    vec_with_positions: VecWithPositionsVector<T>,
+    range_start: usize,
+    range_end: usize, // wraps around circularly
+}
+
+impl<T> VecWithPositionsAllDifferent<T> {
+    fn push(&mut self, value: T) {
+        self.vec_with_positions.push(value);
+    }
+    fn append(&mut self, other: &mut Vec<T>) {
+        self.vec_with_positions.append(other);
+    }
+    fn remove(&mut self, index: usize) {
+        self.vec_with_positions.set_position(index, self.range_end);
+        self.vec_with_positions.remove(index);
+    }
+    fn clear(&mut self) {
+        self.range_start = 0;
+        self.range_end = 0;
+        self.vec_with_positions.clear();
+    }
+    fn len(&self) -> usize {
+        self.vec_with_positions.len()
+    }
+    fn new_position(&mut self) -> usize {
+        self.range_end += 1;
+        if self.range_end == self.len() {
+            self.range_end = 0;
+        }
+        self.range_end
+    }
+    fn get(&self, index: usize) -> Option<&T> {
+        self.vec_with_positions.get(index)
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.vec_with_positions.get_mut(index)
+    }
+    fn set(&mut self, index: usize, value: T) {
+        self.vec_with_positions.set(index, value)
     }
 }
 
