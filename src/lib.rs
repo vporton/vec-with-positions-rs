@@ -17,8 +17,8 @@ pub struct Position(usize); // TODO: pub?
 /// TODO: `Position` enum type to differentiate positions and indexes.
 pub trait VecWithPositions<'a, T>
 {
-    type Positions: Iterator<Item = &'a Position> + 'a;
-    type PositionsMut: Iterator<Item = &'a mut Position> + 'a;
+    type Positions: Iterator<Item = &'a usize> + 'a;
+    type PositionsMut: Iterator<Item = &'a mut usize> + 'a;
 
     fn vec(&self) -> &Vec<T>;
     fn vec_mut(&mut self) -> &mut Vec<T>;
@@ -33,8 +33,8 @@ pub trait VecWithPositions<'a, T>
     fn remove(&'a mut self, index: usize) -> T { // FIXME
         let result = self.vec_mut().remove(index);
         for pos in self.positions_mut() {
-            if (*pos).0 > index {
-                (*pos).0 -= 1;
+            if *pos > index {
+                *pos -= 1;
             }
         }
         result
@@ -42,6 +42,7 @@ pub trait VecWithPositions<'a, T>
     fn clear(&mut self) {
         self.vec_mut().clear();
     }
+
     fn get(&self, index: usize) -> Option<&T> {
         self.vec().get(index)
     }
@@ -69,27 +70,27 @@ pub trait VecWithPositions<'a, T>
 
 pub struct VecWithOnePosition<T> {
     vec: Vec<T>,
-    position: Position,
+    position: usize,
 }
 
 impl<T> VecWithOnePosition<T> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
-            position: Position(usize::MAX),
+            position: usize::MAX, // a nonsense value
         }
     }
-    pub fn get_position(&self) -> Position {
+    pub fn get_position(&self) -> usize {
         self.position
     }
-    pub fn set_position(&mut self, pos: Position) {
-        self.position = pos;
+    pub fn set_position(&mut self, index: usize) {
+        self.position = index;
     }
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
-    type Positions = Once<&'a Position>;
-    type PositionsMut = Once<&'a mut Position>;
+    type Positions = Once<&'a usize>;
+    type PositionsMut = Once<&'a mut usize>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -106,7 +107,7 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
 
 pub struct VecWithPositionsVector<T> {
     vec: Vec<T>,
-    positions: Vec<Position>,
+    positions: Vec<usize>,
 }
 
 impl<T> VecWithPositionsVector<T> {
@@ -116,17 +117,28 @@ impl<T> VecWithPositionsVector<T> {
             positions: Vec::new(),
         }
     }
-    pub fn get_position(&self, index: usize) -> Position {
-        self.positions[index]
+
+    pub fn get_position(&self, pos: Position) -> usize {
+        self.positions[pos.0]
     }
-    pub fn set_position(&mut self, index: usize, pos: Position) {
-        self.positions[index] = pos;
+    pub fn set_position(&mut self, pos: Position, index: usize) {
+        self.positions[pos.0] = index;
+    }
+
+    fn get_by_position(&self, pos: Position) -> Option<&T> {
+        self.get(self.positions[pos.0])
+    }
+    fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+        self.get_mut(self.positions[pos.0])
+    }
+    fn set_by_position(&mut self, pos: Position, value: T) {
+        self.set(self.positions[pos.0], value);
     }
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
-    type Positions = std::slice::Iter<'a, Position>;
-    type PositionsMut = std::slice::IterMut<'a, Position>;
+    type Positions = std::slice::Iter<'a, usize>;
+    type PositionsMut = std::slice::IterMut<'a, usize>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -194,6 +206,15 @@ impl<T> VecWithPositionsAllDifferent<T> {
     }
     pub fn set(&mut self, index: usize, value: T) {
         self.vec_with_positions.set(index, value)
+    }
+    pub fn get_by_position(&self, pos: Position) -> Option<&T> {
+        self.vec_with_positions.get_by_position(pos)
+    }
+    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+        self.vec_with_positions.get_mut_by_position(pos)
+    }
+    pub fn set_by_position(&mut self, pos: Position, value: T) {
+        self.vec_with_positions.set_by_position(pos, value)
     }
 }
 
