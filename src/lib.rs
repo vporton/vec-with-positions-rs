@@ -1,6 +1,10 @@
+//! UNTESTED code.
+//!
+//! TODO: docs
+
 use std::iter::{once, Once};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(usize); // TODO: pub?
 
 // FIXME: Set positions to usize::max.
@@ -26,7 +30,7 @@ pub trait VecWithPositions<'a, T>
     fn append(&mut self, other: &mut Vec<T>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, index: usize) -> T {
+    fn remove(&'a mut self, index: usize) -> T { // FIXME
         let result = self.vec_mut().remove(index);
         for pos in self.positions_mut() {
             if (*pos).0 > index {
@@ -150,55 +154,62 @@ pub struct VecWithPositionsAllDifferent<T> {
 }
 
 impl<T> VecWithPositionsAllDifferent<T> {
-    fn push(&mut self, value: T) {
+    pub fn push(&mut self, value: T) {
         self.vec_with_positions.push(value);
     }
-    fn append(&mut self, other: &mut Vec<T>) {
+    pub fn append(&mut self, other: &mut Vec<T>) {
         self.vec_with_positions.append(other);
     }
-    fn remove(&mut self, index: usize) {
-        self.vec_with_positions.set_position(index, self.range_end);
-        self.vec_with_positions.remove(index);
+    pub fn remove(&mut self, index: usize) -> T {
+        self.range_end.0 = if self.range_end.0 != 0 {
+            self.range_end.0 - 1
+        } else {
+            self.len()
+        };
+        self.vec_with_positions.remove(index)
     }
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.range_start = Position(0);
         self.range_end = Position(0);
         self.vec_with_positions.clear();
     }
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.vec_with_positions.len()
     }
-    fn new_position(&mut self) -> Position {
+    pub fn is_empty(&self) -> bool {
+        self.vec_with_positions.is_empty()
+    }
+    pub fn new_position(&mut self) -> Position {
         self.range_end.0 += 1;
         if self.range_end.0 == self.len() {
             self.range_end.0 = 0;
         }
         self.range_end
     }
-    fn get(&self, index: usize) -> Option<&T> {
+    pub fn get(&self, index: usize) -> Option<&T> {
         self.vec_with_positions.get(index)
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.vec_with_positions.get_mut(index)
     }
-    fn set(&mut self, index: usize, value: T) {
+    pub fn set(&mut self, index: usize, value: T) {
         self.vec_with_positions.set(index, value)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{VecWithOnePosition, VecWithPositions};
+    use crate::{Position, VecWithOnePosition, VecWithPositions};
 
     #[test]
     fn before() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(3);
+        v.set_position(Position(3));
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 3);
+        assert_eq!(v.get_position().0, 3);
     }
 
     #[test]
@@ -206,10 +217,10 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(5);
+        v.set_position(Position(5));
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 5);
+        assert_eq!(v.get_position().0, 5);
     }
 
     #[test]
@@ -217,9 +228,9 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(7);
+        v.set_position(Position(7));
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 6);
+        assert_eq!(v.get_position().0, 6);
     }
 }
