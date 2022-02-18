@@ -88,6 +88,12 @@ impl<T> VecWithOnePosition<T> {
     }
 }
 
+impl<T> Default for VecWithOnePosition<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
     type Positions = Once<&'a usize>;
     type PositionsMut = Once<&'a mut usize>;
@@ -108,6 +114,12 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
 pub struct VecWithPositionsVector<T> {
     vec: Vec<T>,
     positions: Vec<usize>,
+}
+
+impl<T> Default for VecWithPositionsVector<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T> VecWithPositionsVector<T> {
