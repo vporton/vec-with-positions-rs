@@ -5,6 +5,7 @@ edition = "2021"
 description = "A `Vec` together with positions that move together with the elements if the `Vec`"
 authors = ["Victor Porton"]
 license = "Apache-2.0"
+homepage = "https://github.com/vporton/vec-with-positions-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -7,14 +7,10 @@ use std::iter::{once, Once};
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(usize); // TODO: pub?
 
-// FIXME: Set positions to usize::max.
-
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.
 ///
 /// Implemented partially.
-///
-/// TODO: `Position` enum type to differentiate positions and indexes.
 pub trait VecWithPositions<'a, T>
 {
     type Positions: Iterator<Item = &'a usize> + 'a;
