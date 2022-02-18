@@ -232,17 +232,17 @@ impl<T> VecWithPositionsAllDifferent<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Position, VecWithOnePosition, VecWithPositions};
+    use crate::{VecWithOnePosition, VecWithPositions};
 
     #[test]
     fn before() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(Position(3));
+        v.set_position(3);
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position().0, 3);
+        assert_eq!(v.get_position(), 3);
     }
 
     #[test]
@@ -250,10 +250,10 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(Position(5));
+        v.set_position(5);
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position().0, 5);
+        assert_eq!(v.get_position(), 5);
     }
 
     #[test]
@@ -261,9 +261,9 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(Position(7));
+        v.set_position(7);
         v.remove(5);
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position().0, 6);
+        assert_eq!(v.get_position(), 6);
     }
 }
