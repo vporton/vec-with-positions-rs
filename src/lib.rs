@@ -304,7 +304,7 @@ mod tests {
     use crate::{Position, VecWithOnePosition, VecWithPositions};
 
     #[test]
-    fn before() {
+    fn one_position_before() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn middle() {
+    fn one_position_middle() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
@@ -326,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn after() {
+    fn one_position_after() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
