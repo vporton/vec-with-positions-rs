@@ -208,7 +208,7 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 pub struct ResourcesPool<T> {
     resources: Vec<T>,
     allocated: Vec<Position>,
-    next: Option<Position>, // wraps around circularly // FIXME: If it is deleted, further allocation fails.
+    next: Option<Position>, // wraps around circularly
 }
 
 impl<'a, T> VecWithPositions<'a, T> for ResourcesPool<T> {
