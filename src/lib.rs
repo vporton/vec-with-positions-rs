@@ -26,7 +26,7 @@ pub trait VecWithPositions<'a, T>
     fn append(&mut self, other: &mut Vec<T>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, pos: Position) -> T { // FIXME
+    fn remove(&'a mut self, pos: Position) -> T {
         let result = self.vec_mut().remove(pos.0);
         self.positions_mut().for_each(|p| {
             if let Some(p) = p.as_mut() {
