@@ -13,8 +13,8 @@ pub struct Position(usize); // TODO: pub?
 /// Implemented partially.
 pub trait VecWithPositions<'a, T>
 {
-    type Positions: Iterator<Item = &'a Option<&'a Position>> + 'a;
-    type PositionsMut: Iterator<Item = &'a mut Option<&'a mut Position>> + 'a;
+    type Positions: Iterator<Item = &'a Option<Position>> + 'a;
+    type PositionsMut: Iterator<Item = &'a mut Option<Position>> + 'a;
 
     fn vec(&self) -> &Vec<T>;
     fn vec_mut(&mut self) -> &mut Vec<T>;
@@ -91,8 +91,8 @@ impl<T> Default for VecWithOnePosition<T> {
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
-    type Positions = Once<&'a Option<&'a Position>>;
-    type PositionsMut = Once<&'a mut Option<&'a mut Position>>;
+    type Positions = Once<&'a Option<Position>>;
+    type PositionsMut = Once<&'a mut Option<Position>>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -109,7 +109,7 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
 
 pub struct VecWithPositionsVector<T> {
     vec: Vec<T>,
-    positions: Vec<Position>,
+    positions: Vec<Option<Position>>,
 }
 
 impl<T> Default for VecWithPositionsVector<T> {
@@ -126,14 +126,17 @@ impl<T> VecWithPositionsVector<T> {
         }
     }
 
-    pub fn get_position(&self, index: usize) -> Option<&Position> {
-        self.positions.get(index)
+    pub fn get_position(&self, index: usize) -> &Option<Position> {
+        &self.positions[index]
     }
-    pub fn set_position(&mut self, index: usize, pos: Position) {
+    pub fn get_position_mut(&mut self, index: usize) -> &mut Option<Position> {
+        &mut self.positions[index]
+    }
+    pub fn set_position(&mut self, index: usize, pos: Option<Position>) {
         self.positions[index] = pos;
     }
     fn remove_by_position_index(&mut self, index: usize) -> Option<T> {
-        if let Some(Position(Some(pos))) = self.get_position() {
+        if let Some(Position(pos)) = self.get_position(index) {
             Some(self.remove(*pos))
         } else {
             None
@@ -142,8 +145,8 @@ impl<T> VecWithPositionsVector<T> {
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
-    type Positions = std::slice::Iter<'a, Option<&'a Position>>;
-    type PositionsMut = std::slice::IterMut<'a, Option<&'a mut Position>>;
+    type Positions = std::slice::Iter<'a, Option<Position>>;
+    type PositionsMut = std::slice::IterMut<'a, Option<Position>>;
     fn vec(&self) -> &Vec<T> {
         &self.vec
     }
@@ -170,13 +173,13 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// Despite of the name, positions can be the same, if shortage of the pool.
 pub struct VecWithPositionsAllDifferent<T> {
     resources: Vec<T>,
-    allocated: Vec<Position>,
+    allocated: Vec<Option<Position>>,
     next: Option<Position>, // wraps around circularly // FIXME: If it is deleted, further allocation fails.
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsAllDifferent<T> {
-    type Positions = Chain<std::slice::Iter<'a, Option<&'a Position>>, Once<&'a Option<&'a Position>>>;
-    type PositionsMut = Chain<std::slice::IterMut<'a, Option<&'a mut Position>>, Once<&'a mut Option<&'a mut Position>>>;
+    type Positions = Chain<std::slice::Iter<'a, Option<Position>>, Once<&'a Option<Position>>>;
+    type PositionsMut = Chain<std::slice::IterMut<'a, Option<Position>>, Once<&'a mut Option<Position>>>;
     fn vec(&self) -> &Vec<T> {
         &self.resources
     }
@@ -211,17 +214,17 @@ impl<T> VecWithPositionsAllDifferent<T> {
         if self.allocated.contains(&self.next) {
             None
         } else {
-            Some(self.allocate_voracious())
+            self.allocate_voracious()
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_voracious(&mut self) -> Position {
+    pub fn allocate_voracious(&mut self) -> Option<Position> {
         let result = self.next;
         let len = self.len();
-        if let Some(ref mut current) = self.next.0 {
-            *current += 1;
-            if *current == len {
-                *current = 0;
+        if let Some(ref mut current) = self.next {
+            (*current).0 += 1;
+            if (*current).0 == len {
+                (*current).0 = 0;
             }
         }
         result
