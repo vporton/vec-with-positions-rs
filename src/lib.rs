@@ -166,9 +166,20 @@ impl<T> VecWithPositionsVector<T> {
     pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
         self.vec.get_mut(pos.0)
     }
-    pub fn set_mut_by_position(&mut self, pos: Position, value: T) {
+    pub fn set_by_position(&mut self, pos: Position, value: T) {
         self.vec[pos.0] = value;
     }
+
+    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&T> {
+        self.get_by_position(self.positions[pos_index])
+    }
+    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut T> {
+        self.get_mut_by_position(self.positions[pos_index])
+    }
+    pub fn set_by_position_index(&mut self, pos_index: usize, value: T) {
+        self.set_by_position(self.positions[pos_index], value);
+    }
+
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
     }
@@ -284,15 +295,6 @@ impl<T> ResourcesPool<T> {
         new_pos
     }
 
-    pub fn get(&self, index: usize) -> Option<&T> {
-        self.resources.get(index)
-    }
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        self.resources.get_mut(index)
-    }
-    pub fn set(&mut self, index: usize, value: T) {
-        self.resources[index] = value;
-    }
     pub fn get_position(&self, index: usize) -> &Position {
         &self.allocated[index]
     }
@@ -311,6 +313,17 @@ impl<T> ResourcesPool<T> {
     pub fn set_by_position(&mut self, pos: Position, value: T) {
         self.resources[pos.0] = value;
     }
+
+    pub fn get_by_position_index(&self, pos: Position) -> Option<&T> {
+        self.get_by_position( self.allocated[pos.0])
+    }
+    pub fn get_mut_by_position_index(&mut self, pos: Position) -> Option<&mut T> {
+        self.get_mut_by_position(self.allocated[pos.0])
+    }
+    pub fn set_by_position_index(&mut self, pos: Position, value: T) {
+        self.set_by_position(self.allocated[pos.0], value);
+    }
+
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
     }
