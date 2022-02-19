@@ -5,7 +5,7 @@
 use std::iter::Chain;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Position(usize); // TODO: pub?
+pub struct Position(pub usize); // TODO: pub?
 
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.

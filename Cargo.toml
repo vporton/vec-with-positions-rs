@@ -1,6 +1,6 @@
 [package]
 name = "vec-with-positions"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 edition = "2021"
 description = "A `Vec` together with positions that move together with the elements if the `Vec`"
 authors = ["Victor Porton"]
