@@ -203,6 +203,8 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// From the pool we "view" a range of currently used nodes, one by thread.
 /// If a note is invalidated, it is removed from the list.
 /// Nodes later than it in the range decrease their positions.
+///
+/// TODO: Test it.
 pub struct ResourcesPool<T> {
     resources: Vec<T>,
     allocated: Vec<Position>,
