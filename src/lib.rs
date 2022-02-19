@@ -3,6 +3,7 @@
 //! TODO: docs
 
 use std::iter::{Chain, once, Once};
+use std::thread::current;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(usize); // TODO: pub?
@@ -251,16 +252,19 @@ impl<T> ResourcesPool<T> {
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious(&mut self) -> Option<Position> {
-        let result = self.next;
+    pub fn allocate_rapacious(&mut self, pos: &mut Option<Position>) {
+        let new_pos = self.next;
         let len = self.len();
-        if let Some(ref mut current) = self.next {
-            (*current).0 += 1;
-            if (*current).0 == len {
-                (*current).0 = 0;
-            }
+        *pos = new_pos;
+        if let Some(new_pos) = new_pos {
+            self.next = Some(Position(if new_pos.0 + 1 == len {
+                0
+            } else {
+                new_pos.0 + 1
+            };
+        } else {
+            // FIXME: What to do if `self.next` is invalidated? (possible only if greedy)
         }
-        result
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
