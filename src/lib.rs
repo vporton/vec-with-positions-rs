@@ -28,9 +28,11 @@ pub trait VecWithPositions<'a, T>
     }
     fn remove(&'a mut self, pos: Position) -> T { // FIXME
         let result = self.vec_mut().remove(pos.0);
-        self.positions_mut().filter_map(|p| *p).for_each(|mut p| {
-            if p.0 > pos.0 {
-                p.0 -= 1;
+        self.positions_mut().for_each(|p| {
+            if let Some(p) = p.as_mut() {
+                if p.0 > pos.0 {
+                    p.0 -= 1;
+                }
             }
         });
         result
@@ -103,6 +105,10 @@ impl<T> VecWithOnePosition<T> {
             panic!("Attempt to set nonexisting position.");
         }
     }
+    pub fn clear(&mut self) {
+        self.vec.clear();
+        self.position = None;
+    }
 }
 
 impl<T> Default for VecWithOnePosition<T> {
@@ -167,6 +173,10 @@ impl<T> VecWithPositionsVector<T> {
     }
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
+    }
+    pub fn clear(&mut self) {
+        self.vec.clear();
+        self.positions.clear();
     }
 }
 
@@ -286,21 +296,25 @@ impl<T> VecWithPositionsAllDifferent<T> {
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
     }
+    pub fn clear(&mut self) {
+        self.resources.clear();
+        self.allocated.clear();
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{VecWithOnePosition, VecWithPositions};
+    use crate::{Position, VecWithOnePosition, VecWithPositions};
 
     #[test]
     fn before() {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(3);
-        v.remove(5);
+        v.set_position(Some(Position(3)));
+        v.remove(Position(5));
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 3);
+        assert_eq!(v.get_position(), Some(Position(3)));
     }
 
     #[test]
@@ -308,10 +322,10 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(5);
-        v.remove(5);
+        v.set_position(Some(Position(5)));
+        v.remove(Position(5));
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 5);
+        assert_eq!(v.get_position(), Some(Position(5)));
     }
 
     #[test]
@@ -319,9 +333,9 @@ mod tests {
         let mut v = VecWithOnePosition::new();
         let mut input = (0..10).collect::<Vec<i32>>();
         v.append(&mut input);
-        v.set_position(7);
-        v.remove(5);
+        v.set_position(Some(Position(7)));
+        v.remove(Position(5));
         assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
-        assert_eq!(v.get_position(), 6);
+        assert_eq!(v.get_position(), Some(Position(6)));
     }
 }
