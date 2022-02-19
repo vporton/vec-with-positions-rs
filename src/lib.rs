@@ -317,14 +317,14 @@ impl<T> ResourcesPool<T> {
         self.resources[pos.0] = value;
     }
 
-    pub fn get_by_position_index(&self, pos: Position) -> Option<&T> {
-        self.get_by_position( self.allocated[pos.0])
+    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&T> {
+        self.get_by_position( self.allocated[pos_index])
     }
-    pub fn get_mut_by_position_index(&mut self, pos: Position) -> Option<&mut T> {
-        self.get_mut_by_position(self.allocated[pos.0])
+    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut T> {
+        self.get_mut_by_position(self.allocated[pos_index])
     }
-    pub fn set_by_position_index(&mut self, pos: Position, value: T) {
-        self.set_by_position(self.allocated[pos.0], value);
+    pub fn set_by_position_index(&mut self, pos_index: usize, value: T) {
+        self.set_by_position(self.allocated[pos_index], value);
     }
 
     pub fn remove_by_position(&mut self, pos: Position) -> T {
