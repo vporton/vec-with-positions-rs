@@ -37,7 +37,7 @@ pub trait VecWithPositions<'a, T>
         });
         result
     }
-    fn clear(&mut self) { // FIXME: Clear positions, too.
+    fn clear(&mut self) {
         self.vec_mut().clear();
     }
 
