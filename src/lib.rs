@@ -203,10 +203,8 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 ///
 /// Example: Several threads use a pool of network nodes to download from.
 /// From the pool we "view" a range of currently used nodes, one by thread.
-/// If a note is invalidated, it is removed from the list and the lacking thread
-/// is moved to the end of the list receiving a new node.
+/// If a note is invalidated, it is removed from the list.
 /// Nodes later than it in the range decrease their positions.
-/// Despite of the name, positions can be the same, if shortage of the pool.
 pub struct ResourcesPool<T> {
     resources: Vec<T>,
     allocated: Vec<Option<Position>>,
