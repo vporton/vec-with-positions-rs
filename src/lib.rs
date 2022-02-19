@@ -251,14 +251,18 @@ impl<T> ResourcesPool<T> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position(&mut self) {
+    pub fn allocate_new_position(&mut self) -> Option<usize> {
         if self.allocated.len() >= self.resources.len() {
-            ()
+            None
         } else {
             if let Some(new_pos) = self.allocate_rapacious() {
+                let result = self.allocated.len();
                 self.allocated.push(new_pos);
+                Some(result)
+            } else {
+                None
             }
-        };
+        }
     }
     /// Reallocates a resource.
     pub fn reallocate_position(&mut self, index: usize) {
