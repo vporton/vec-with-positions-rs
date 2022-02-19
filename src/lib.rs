@@ -229,6 +229,14 @@ impl<'a, T> VecWithPositions<'a, T> for ResourcesPool<T> {
 }
 
 impl<T> ResourcesPool<T> {
+    pub fn new() -> Self {
+        Self {
+            resources: Vec::new(),
+            allocated: Vec::new(),
+            next: None,
+        }
+    }
+
     pub fn push(&mut self, value: T) {
         self.resources.push(value);
     }
