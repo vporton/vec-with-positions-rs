@@ -183,6 +183,9 @@ impl<T> VecWithPositionsVector<T> {
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
     }
+    pub fn remove_by_position_index(&mut self, pos_index: usize) -> T {
+        self.remove(self.positions[pos_index])
+    }
     pub fn clear(&mut self) {
         self.vec.clear();
         self.positions.clear();
@@ -326,6 +329,9 @@ impl<T> ResourcesPool<T> {
 
     pub fn remove_by_position(&mut self, pos: Position) -> T {
         self.remove(pos)
+    }
+    pub fn remove_by_position_index(&mut self, pos_index: usize) -> T {
+        self.remove(self.allocated[pos_index])
     }
     pub fn clear(&mut self) {
         self.resources.clear();
