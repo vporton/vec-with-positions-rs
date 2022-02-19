@@ -207,13 +207,13 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// is moved to the end of the list receiving a new node.
 /// Nodes later than it in the range decrease their positions.
 /// Despite of the name, positions can be the same, if shortage of the pool.
-pub struct VecWithPositionsAllDifferent<T> {
+pub struct ResourcesPool<T> {
     resources: Vec<T>,
     allocated: Vec<Option<Position>>,
     next: Option<Position>, // wraps around circularly // FIXME: If it is deleted, further allocation fails.
 }
 
-impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsAllDifferent<T> {
+impl<'a, T> VecWithPositions<'a, T> for ResourcesPool<T> {
     type Positions = Chain<std::slice::Iter<'a, Option<Position>>, Once<&'a Option<Position>>>;
     type PositionsMut = Chain<std::slice::IterMut<'a, Option<Position>>, Once<&'a mut Option<Position>>>;
     fn vec(&self) -> &Vec<T> {
@@ -231,7 +231,7 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsAllDifferent<T> {
 }
 
 
-impl<T> VecWithPositionsAllDifferent<T> {
+impl<T> ResourcesPool<T> {
     pub fn push(&mut self, value: T) {
         self.resources.push(value);
     }
