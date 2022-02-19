@@ -228,7 +228,6 @@ impl<'a, T> VecWithPositions<'a, T> for ResourcesPool<T> {
     }
 }
 
-
 impl<T> ResourcesPool<T> {
     pub fn push(&mut self, value: T) {
         self.resources.push(value);
