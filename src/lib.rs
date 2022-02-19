@@ -2,8 +2,7 @@
 //!
 //! TODO: docs
 
-use std::iter::{Chain, once, Once};
-use std::thread::current;
+use std::iter::Chain;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(usize); // TODO: pub?
@@ -242,28 +241,33 @@ impl<T> ResourcesPool<T> {
     }
 
     /// Allocates a resource if there are free resources.
-    /// FIXME: Remove `Option`.
-    pub fn allocate(&mut self, pos: &mut Option<Position>) -> Option<Position> {
-        if self.allocated.len() == self.resources.len() {
-            None
+    pub fn allocate_new_position(&mut self) {
+        if self.allocated.len() >= self.resources.len() {
+            ()
         } else {
-            self.allocate_rapacious()
+            if let Some(new_pos) = self.allocate_rapacious() {
+                self.allocated.push(new_pos);
+            }
+        };
+    }
+    /// Reallocates a resource.
+    pub fn reallocate_position(&mut self, index: usize) {
+        if let Some(new_pos) = self.allocate_rapacious() {
+            self.allocated[index] = new_pos;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious(&mut self, pos: &mut Option<Position>) {
+    fn allocate_rapacious(&mut self) -> Option<Position> {
         let new_pos = self.next;
         let len = self.len();
-        *pos = new_pos;
         if let Some(new_pos) = new_pos {
             self.next = Some(Position(if new_pos.0 + 1 == len {
                 0
             } else {
                 new_pos.0 + 1
             }));
-        } else {
-            // FIXME: What to do if `self.next` is invalidated? (possible only if greedy)
         }
+        new_pos
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
@@ -275,13 +279,13 @@ impl<T> ResourcesPool<T> {
     pub fn set(&mut self, index: usize, value: T) {
         self.resources[index] = value;
     }
-    pub fn get_position(&self, index: usize) -> &Option<Position> {
+    pub fn get_position(&self, index: usize) -> &Position {
         &self.allocated[index]
     }
-    pub fn get_position_mut(&mut self, index: usize) -> &mut Option<Position> {
+    pub fn get_position_mut(&mut self, index: usize) -> &mut Position {
         &mut self.allocated[index]
     }
-    pub fn set_position(&mut self, index: usize, pos: Option<Position>) {
+    pub fn set_position(&mut self, index: usize, pos: Position) {
         self.allocated[index] = pos;
     }
     pub fn get_by_position(&self, pos: Position) -> Option<&T> {
