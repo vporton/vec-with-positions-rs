@@ -26,13 +26,13 @@ pub trait VecWithPositions<'a, T>
     fn append(&mut self, other: &mut Vec<T>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, index: usize) -> T { // FIXME
-        let result = self.vec_mut().remove(index);
-        for ref mut pos in self.positions_mut().filter_map(|p| *p) {
-            if (*pos).0 > index {
-                (*pos).0 -= 1;
+    fn remove(&'a mut self, pos: Position) -> T { // FIXME
+        let result = self.vec_mut().remove(pos.0);
+        self.positions_mut().filter_map(|p| *p).for_each(|mut p| {
+            if p.0 > pos.0 {
+                p.0 -= 1;
             }
-        }
+        });
         result
     }
     fn clear(&mut self) { // FIXME: Clear positions, too.
@@ -81,6 +81,27 @@ impl<T> VecWithOnePosition<T> {
     }
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
+    }
+    pub fn get_by_position(&self) -> Option<&T> {
+        if let Some(pos) = self.position {
+            Some(&self.vec[pos.0])
+        } else {
+            None
+        }
+    }
+    pub fn get_mut_by_position(&mut self) -> Option<&mut T> {
+        if let Some(pos) = self.position {
+            Some(&mut self.vec[pos.0])
+        } else {
+            None
+        }
+    }
+    pub fn set_by_position(&mut self, value: T) {
+        if let Some(pos) = self.position {
+            self.vec[pos.0] = value;
+        } else {
+            panic!("Attempt to set nonexisting position.");
+        }
     }
 }
 
@@ -135,12 +156,17 @@ impl<T> VecWithPositionsVector<T> {
     pub fn set_position(&mut self, index: usize, pos: Option<Position>) {
         self.positions[index] = pos;
     }
-    fn remove_by_position_index(&mut self, index: usize) -> Option<T> {
-        if let Some(Position(pos)) = self.get_position(index) {
-            Some(self.remove(*pos))
-        } else {
-            None
-        }
+    pub fn get_by_position(&self, pos: Position) -> Option<&T> {
+        self.vec.get(pos.0)
+    }
+    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+        self.vec.get_mut(pos.0)
+    }
+    pub fn set_mut_by_position(&mut self, pos: Position, value: T) {
+        self.vec[pos.0] = value;
+    }
+    pub fn remove_by_position(&mut self, pos: Position) -> T {
+        self.remove(pos)
     }
 }
 
@@ -214,11 +240,11 @@ impl<T> VecWithPositionsAllDifferent<T> {
         if self.allocated.contains(&self.next) {
             None
         } else {
-            self.allocate_voracious()
+            self.allocate_rapacious()
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_voracious(&mut self) -> Option<Position> {
+    pub fn allocate_rapacious(&mut self) -> Option<Position> {
         let result = self.next;
         let len = self.len();
         if let Some(ref mut current) = self.next {
@@ -239,18 +265,27 @@ impl<T> VecWithPositionsAllDifferent<T> {
     pub fn set(&mut self, index: usize, value: T) {
         self.resources[index] = value;
     }
-    // pub fn get_by_position(&self, pos: Position) -> Option<&T> {
-    //     self.resources.get_by_position(pos)
-    // }
-    // pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
-    //     self.resources.get_mut_by_position(pos)
-    // }
-    // pub fn set_by_position(&mut self, pos: Position, value: T) {
-    //     self.resources.set_by_position(pos, value)
-    // }
-    // pub fn remove_by_position(&mut self, pos: Position) -> T {
-    //     self.resources.remove_by_position(pos)
-    // }
+    pub fn get_position(&self, index: usize) -> &Option<Position> {
+        &self.allocated[index]
+    }
+    pub fn get_position_mut(&mut self, index: usize) -> &mut Option<Position> {
+        &mut self.allocated[index]
+    }
+    pub fn set_position(&mut self, index: usize, pos: Option<Position>) {
+        self.allocated[index] = pos;
+    }
+    pub fn get_by_position(&self, pos: Position) -> Option<&T> {
+        self.resources.get( pos.0)
+    }
+    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+        self.resources.get_mut(pos.0)
+    }
+    pub fn set_by_position(&mut self, pos: Position, value: T) {
+        self.resources[pos.0] = value;
+    }
+    pub fn remove_by_position(&mut self, pos: Position) -> T {
+        self.remove(pos)
+    }
 }
 
 #[cfg(test)]
