@@ -192,6 +192,12 @@ impl<T> VecWithPositionsVector<T> {
         self.vec.clear();
         self.positions.clear();
     }
+    pub fn positions_len(&self) -> usize {
+        self.positions.len()
+    }
+    pub fn positions_is_empty(&self) -> bool {
+        self.positions.is_empty()
+    }
 }
 
 impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
@@ -338,6 +344,13 @@ impl<T> ResourcesPool<T> {
     pub fn clear(&mut self) {
         self.resources.clear();
         self.allocated.clear();
+    }
+
+    pub fn allocated_len(&self) -> usize {
+        self.allocated.len()
+    }
+    pub fn allocated_is_empty(&self) -> bool {
+        self.allocated.is_empty()
     }
 }
 
