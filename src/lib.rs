@@ -261,9 +261,15 @@ impl<T> ResourcesPool<T> {
 
     pub fn push(&mut self, value: T) {
         self.resources.push(value);
+        if self.next.is_none() {
+            self.next = Some(Position(0));
+        }
     }
     pub fn append(&mut self, other: &mut Vec<T>) {
         self.resources.append(other);
+        if self.next.is_none() {
+            self.next = Some(Position(0));
+        }
     }
     pub fn len(&self) -> usize {
         self.resources.len()
