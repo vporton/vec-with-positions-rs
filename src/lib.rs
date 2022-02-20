@@ -1,6 +1,8 @@
 //! UNTESTED code.
 //!
 //! TODO: docs
+//!
+//! TODO: `.await` mode to wait when a node is inserted.
 
 use std::iter::Chain;
 
