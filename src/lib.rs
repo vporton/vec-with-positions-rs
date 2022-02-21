@@ -9,26 +9,30 @@ use std::iter::Chain;
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
 
+pub trait Allocator<Active, Inactive> {
+    fn allocate(inactive: &Inactive, pos: Position) -> Active;
+}
+
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.
 ///
 /// Implemented partially.
-pub trait VecWithPositions<'a, T>
+pub trait VecWithPositions<'a, Active, Inactive>
 {
     type Positions: Iterator<Item = &'a Position> + 'a;
     type PositionsMut: Iterator<Item = &'a mut Position> + 'a;
 
-    fn vec(&self) -> &Vec<T>;
-    fn vec_mut(&mut self) -> &mut Vec<T>;
+    fn vec(&self) -> &Vec<Inactive>;
+    fn vec_mut(&mut self) -> &mut Vec<Inactive>;
     fn positions(&'a self) -> Self::Positions;
     fn positions_mut(&'a mut self) -> Self::PositionsMut;
-    fn push(&mut self, value: T) {
+    fn push(&mut self, value: Inactive) {
         self.vec_mut().push(value)
     }
-    fn append(&mut self, other: &mut Vec<T>) {
+    fn append(&mut self, other: &mut Vec<Inactive>) {
         self.vec_mut().append(other)
     }
-    fn remove(&'a mut self, pos: Position) -> T {
+    fn remove(&'a mut self, pos: Position) -> Inactive {
         let result = self.vec_mut().remove(pos.0);
         self.positions_mut().for_each(|p| {
             if p.0 > pos.0 {
@@ -41,13 +45,13 @@ pub trait VecWithPositions<'a, T>
         self.vec_mut().clear();
     }
 
-    fn get(&self, index: usize) -> Option<&T> {
+    fn get(&self, index: usize) -> Option<&Inactive> {
         self.vec().get(index)
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut Inactive> {
         self.vec_mut().get_mut(index)
     }
-    fn set(&mut self, index: usize, value: T) {
+    fn set(&mut self, index: usize, value: Inactive) {
         self.vec_mut()[index] = value;
     }
 
@@ -58,20 +62,20 @@ pub trait VecWithPositions<'a, T>
         self.vec().len()
     }
 
-    fn iter(&'a self) -> std::slice::Iter<'a, T> {
+    fn iter(&'a self) -> std::slice::Iter<'a, Inactive> {
         self.vec().iter()
     }
-    fn iter_mut(&'a mut self) -> std::slice::IterMut<'a, T> {
+    fn iter_mut(&'a mut self) -> std::slice::IterMut<'a, Inactive> {
         self.vec_mut().iter_mut()
     }
 }
 
-pub struct VecWithOnePosition<T> {
-    vec: Vec<T>,
+pub struct VecWithOnePosition<Inactive> {
+    vec: Vec<Inactive>,
     position: Option<Position>,
 }
 
-impl<T> VecWithOnePosition<T> {
+impl<Inactive> VecWithOnePosition<Inactive> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
@@ -84,21 +88,21 @@ impl<T> VecWithOnePosition<T> {
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
     }
-    pub fn get_by_position(&self) -> Option<&T> {
+    pub fn get_by_position(&self) -> Option<&Inactive> {
         if let Some(pos) = self.position {
             Some(&self.vec[pos.0])
         } else {
             None
         }
     }
-    pub fn get_mut_by_position(&mut self) -> Option<&mut T> {
+    pub fn get_mut_by_position(&mut self) -> Option<&mut Inactive> {
         if let Some(pos) = self.position {
             Some(&mut self.vec[pos.0])
         } else {
             None
         }
     }
-    pub fn set_by_position(&mut self, value: T) {
+    pub fn set_by_position(&mut self, value: Inactive) {
         if let Some(pos) = self.position {
             self.vec[pos.0] = value;
         } else {
@@ -111,19 +115,19 @@ impl<T> VecWithOnePosition<T> {
     }
 }
 
-impl<T> Default for VecWithOnePosition<T> {
+impl<Inactive> Default for VecWithOnePosition<Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
+impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOnePosition<Inactive> {
     type Positions = std::option::Iter<'a, Position>;
     type PositionsMut = std::option::IterMut<'a, Position>;
-    fn vec(&self) -> &Vec<T> {
+    fn vec(&self) -> &Vec<Inactive> {
         &self.vec
     }
-    fn vec_mut(&mut self) -> &mut Vec<T> {
+    fn vec_mut(&mut self) -> &mut Vec<Inactive> {
         &mut self.vec
     }
     fn positions(&'a self) -> Self::Positions {
@@ -134,18 +138,18 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithOnePosition<T> {
     }
 }
 
-pub struct VecWithPositionsVector<T> {
-    vec: Vec<T>,
-    positions: Vec<Position>,
+pub struct VecWithPositionsVector<Active, Inactive> {
+    vec: Vec<Inactive>,
+    positions: Vec<Active>,
 }
 
-impl<T> Default for VecWithPositionsVector<T> {
+impl<Inactive> Default for VecWithPositionsVector<Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> VecWithPositionsVector<T> {
+impl<Active, Inactive> VecWithPositionsVector<Active, Inactive> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
@@ -153,40 +157,37 @@ impl<T> VecWithPositionsVector<T> {
         }
     }
 
-    pub fn get_position(&self, index: usize) -> &Position {
+    pub fn get_active(&self, index: usize) -> &Active {
         &self.positions[index]
     }
-    pub fn get_position_mut(&mut self, index: usize) -> &mut Position {
+    pub fn get_active_mut(&mut self, index: usize) -> &mut Active {
         &mut self.positions[index]
     }
-    pub fn set_position(&mut self, index: usize, pos: Position) {
-        self.positions[index] = pos;
+    pub fn set_active(&mut self, index: usize, value: Active) {
+        self.positions[index] = value;
     }
-    pub fn get_by_position(&self, pos: Position) -> Option<&T> {
+    pub fn get_by_position(&self, pos: Position) -> Option<&Inactive> {
         self.vec.get(pos.0)
     }
-    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut Inactive> {
         self.vec.get_mut(pos.0)
     }
-    pub fn set_by_position(&mut self, pos: Position, value: T) {
+    pub fn set_by_position(&mut self, pos: Position, value: Inactive) {
         self.vec[pos.0] = value;
     }
 
-    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&T> {
-        self.get_by_position(self.positions[pos_index])
+    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
+        self.get_by_position(self.positions[pos_index].position())
     }
-    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut T> {
-        self.get_mut_by_position(self.positions[pos_index])
+    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
+        self.get_mut_by_position(self.positions[pos_index].position())
     }
-    pub fn set_by_position_index(&mut self, pos_index: usize, value: T) {
-        self.set_by_position(self.positions[pos_index], value);
+    pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
+        self.set_by_position(self.positions[pos_index].position(), value);
     }
 
-    pub fn remove_by_position(&mut self, pos: Position) -> T {
-        self.remove(pos)
-    }
-    pub fn remove_by_position_index(&mut self, pos_index: usize) -> T {
-        self.remove(self.positions[pos_index])
+    pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
+        self.remove(self.positions[pos_index].position())
     }
     pub fn clear(&mut self) {
         self.vec.clear();
@@ -227,30 +228,30 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// Nodes later than it in the range decrease their positions.
 ///
 /// TODO: Test it.
-pub struct ResourcesPool<T> {
-    resources: Vec<T>,
+pub struct ResourcesPool<Inactive> {
+    resources: Vec<Inactive>,
     allocated: Vec<Position>,
     next: Option<Position>, // wraps around circularly
 }
 
-impl<'a, T> VecWithPositions<'a, T> for ResourcesPool<T> {
-    type Positions = Chain<std::slice::Iter<'a, Position>, std::option::Iter<'a, Position>>;
-    type PositionsMut = Chain<std::slice::IterMut<'a, Position>, std::option::IterMut<'a, Position>>;
-    fn vec(&self) -> &Vec<T> {
+impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesPool<Active, Inactive> {
+    type Positions = Box<Iterator<Item = &'a Position> + 'a>;
+    type PositionsMut = Box<Iterator<Item = &'a mut Position> + 'a>;
+    fn vec(&self) -> &Vec<Active> {
         &self.resources
     }
-    fn vec_mut(&mut self) -> &mut Vec<T> {
+    fn vec_mut(&mut self) -> &mut Vec<Active> {
         &mut self.resources
     }
     fn positions(&'a self) -> Self::Positions {
-        self.allocated.iter().chain(self.next.iter())
+        Box::new(self.allocated.iter().chain(self.next.iter()))
     }
     fn positions_mut(&'a mut self) -> Self::PositionsMut {
-        self.allocated.iter_mut().chain(self.next.iter_mut())
+        Box::new(self.allocated.iter_mut().chain(self.next.iter_mut()))
     }
 }
 
-impl<T> ResourcesPool<T> {
+impl<Active, Inactive> ResourcesPool<Active, Inactive> {
     pub fn new() -> Self {
         Self {
             resources: Vec::new(),
@@ -259,13 +260,13 @@ impl<T> ResourcesPool<T> {
         }
     }
 
-    pub fn push(&mut self, value: T) {
+    pub fn push(&mut self, value: Inactive) {
         self.resources.push(value);
         if self.next.is_none() {
             self.next = Some(Position(0));
         }
     }
-    pub fn append(&mut self, other: &mut Vec<T>) {
+    pub fn append(&mut self, other: &mut Vec<Inactive>) {
         self.resources.append(other);
         if self.next.is_none() {
             self.next = Some(Position(0));
@@ -279,13 +280,14 @@ impl<T> ResourcesPool<T> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position(&mut self) -> Option<usize> {
+    pub fn allocate_new_position<Allocator>(&mut self) -> Option<usize> {
         if self.allocated.len() >= self.resources.len() {
             None
         } else {
             if let Some(new_pos) = self.allocate_rapacious() {
                 let result = self.allocated.len();
                 self.allocated.push(new_pos);
+                Some(Allocator::allocate(, new_pos))
                 Some(result)
             } else {
                 None
@@ -321,30 +323,30 @@ impl<T> ResourcesPool<T> {
     pub fn set_position(&mut self, index: usize, pos: Position) {
         self.allocated[index] = pos;
     }
-    pub fn get_by_position(&self, pos: Position) -> Option<&T> {
+    pub fn get_by_position(&self, pos: Position) -> Option<&Inactive> {
         self.resources.get( pos.0)
     }
-    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut T> {
+    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut Inactive> {
         self.resources.get_mut(pos.0)
     }
-    pub fn set_by_position(&mut self, pos: Position, value: T) {
+    pub fn set_by_position(&mut self, pos: Position, value: Inactive) {
         self.resources[pos.0] = value;
     }
 
-    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&T> {
+    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
         self.get_by_position( self.allocated[pos_index])
     }
-    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut T> {
+    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
         self.get_mut_by_position(self.allocated[pos_index])
     }
-    pub fn set_by_position_index(&mut self, pos_index: usize, value: T) {
+    pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
         self.set_by_position(self.allocated[pos_index], value);
     }
 
-    pub fn remove_by_position(&mut self, pos: Position) -> T {
+    pub fn remove_by_position(&mut self, pos: Position) -> Inactive {
         self.remove(pos)
     }
-    pub fn remove_by_position_index(&mut self, pos_index: usize) -> T {
+    pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
         self.remove(self.allocated[pos_index])
     }
     pub fn clear(&mut self) {
