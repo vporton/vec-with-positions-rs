@@ -224,6 +224,12 @@ pub struct ResourcesPool<'a, Active: ActiveResource<'a>, Inactive> {
     phantom: PhantomData<&'a ()>
 }
 
+impl<'a, Active: ActiveResource<'a>, Inactive> Default for ResourcesPool<'a, Active, Inactive> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesPool<'a, Active, Inactive> {
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
