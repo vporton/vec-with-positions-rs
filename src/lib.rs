@@ -217,74 +217,74 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
 /// Nodes later than it in the range decrease their positions.
 ///
 /// TODO: Test it.
-pub struct ResourcesPool<'a, Active: ActiveResource<'a>, Inactive> {
-    resources: Vec<Inactive>,
-    allocated: Vec<Active>,
+pub struct ResourcePool<'a, Active: ActiveResource<'a>, Inactive> {
+    inactive: Vec<Inactive>,
+    active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
     phantom: PhantomData<&'a ()>
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> Default for ResourcesPool<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> Default for ResourcePool<'a, Active, Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesPool<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<'a, Active, Inactive> {
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
-        &self.resources
+        &self.inactive
     }
     fn vec_mut(&mut self) -> &mut Vec<Inactive> {
-        &mut self.resources
+        &mut self.inactive
     }
     fn positions(&'a self) -> Self::Positions {
-        Box::new(self.allocated.iter().map(|value| value.position()).chain(self.next.iter()))
+        Box::new(self.active.iter().map(|value| value.position()).chain(self.next.iter()))
     }
     fn positions_mut(&'a mut self) -> Self::PositionsMut {
-        Box::new(self.allocated.iter_mut().map(|value| value.position_mut()).chain(self.next.iter_mut()))
+        Box::new(self.active.iter_mut().map(|value| value.position_mut()).chain(self.next.iter_mut()))
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive> {
     pub fn new() -> Self {
         Self {
-            resources: Vec::new(),
-            allocated: Vec::new(),
+            inactive: Vec::new(),
+            active: Vec::new(),
             next: None,
             phantom: PhantomData::default(),
         }
     }
 
     pub fn push(&mut self, value: Inactive) {
-        self.resources.push(value);
+        self.inactive.push(value);
         if self.next.is_none() {
             self.next = Some(Position(0));
         }
     }
     pub fn append(&mut self, other: &mut Vec<Inactive>) {
-        self.resources.append(other);
+        self.inactive.append(other);
         if self.next.is_none() {
             self.next = Some(Position(0));
         }
     }
     pub fn inactive_len(&self) -> usize {
-        self.resources.len()
+        self.inactive.len()
     }
     pub fn inactive_is_empty(&self) -> bool {
-        self.resources.is_empty()
+        self.inactive.is_empty()
     }
     pub fn active_len(&self) -> usize {
-        self.allocated.len()
+        self.active.len()
     }
     pub fn active_is_empty(&self) -> bool {
-        self.allocated.is_empty()
+        self.active.is_empty()
     }
 
     /// Allocates a resource if there are free resources.
     pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
-        if self.allocated.len() >= self.resources.len() {
+        if self.active.len() >= self.inactive.len() {
             None
         } else {
             self.allocate_rapacious::<A>()
@@ -294,7 +294,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
     pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
         if let Some(new) = self.allocate_base::<A>() {
             let pos = new.position();
-            self.allocated.push(new);
+            self.active.push(new);
             Some(*pos)
         } else {
             None
@@ -303,7 +303,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
     /// Reallocates a resource.
     pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, pos: Position) {
         if let Some(new) = self.allocate_base::<A>() {
-            self.allocated[pos.0] = new;
+            self.active[pos.0] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
@@ -327,38 +327,38 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
     }
 
     pub fn get_active(&self, pos: Position) -> &Active {
-        &self.allocated[pos.0]
+        &self.active[pos.0]
     }
     pub fn get_active_mut(&mut self, pos: Position) -> &mut Active {
-        &mut self.allocated[pos.0]
+        &mut self.active[pos.0]
     }
     pub fn set_active(&mut self, pos: Position, value: Active) {
-        self.allocated[pos.0] = value;
+        self.active[pos.0] = value;
     }
 
     pub fn get_inactive(&self, pos_index: usize) -> Option<&Inactive> {
-        self.resources.get(pos_index)
+        self.inactive.get(pos_index)
     }
     pub fn get_mut_inactive(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.resources.get_mut(pos_index)
+        self.inactive.get_mut(pos_index)
     }
     pub fn set_inactive(&mut self, pos_index: usize, value: Inactive) {
-        self.resources[pos_index] = value;
+        self.inactive[pos_index] = value;
     }
 
     pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
-        self.remove(*self.allocated[pos_index].position())
+        self.remove(*self.active[pos_index].position())
     }
     pub fn clear(&mut self) {
-        self.resources.clear();
-        self.allocated.clear();
+        self.inactive.clear();
+        self.active.clear();
     }
 
     pub fn allocated_len(&self) -> usize {
-        self.allocated.len()
+        self.active.len()
     }
     pub fn allocated_is_empty(&self) -> bool {
-        self.allocated.is_empty()
+        self.active.is_empty()
     }
 }
 
