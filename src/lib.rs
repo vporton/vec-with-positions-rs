@@ -1,8 +1,6 @@
 //! UNTESTED code.
 //!
 //! TODO: docs
-//!
-//! TODO: `.await` mode to wait when a node is inserted.
 
 use std::marker::PhantomData;
 
@@ -50,27 +48,27 @@ pub trait VecWithPositions<'a, Active: ActiveResource<'a>, Inactive>
         self.vec_mut().clear();
     }
 
-    fn get(&self, index: usize) -> Option<&Inactive> {
-        self.vec().get(index)
+    fn get_inactive(&self, pos: Position) -> Option<&Inactive> {
+        self.vec().get(pos.0)
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut Inactive> {
-        self.vec_mut().get_mut(index)
+    fn get_inactive_mut(&mut self, pos: Position) -> Option<&mut Inactive> {
+        self.vec_mut().get_mut(pos.0)
     }
-    fn set(&mut self, index: usize, value: Inactive) {
-        self.vec_mut()[index] = value;
+    fn set_inactive(&mut self, pos: Position, value: Inactive) {
+        self.vec_mut()[pos.0] = value;
     }
 
-    fn is_empty(&self) -> bool {
+    fn inactive_is_empty(&self) -> bool {
         self.vec().is_empty()
     }
-    fn len(&self) -> usize {
+    fn inactive_len(&self) -> usize {
         self.vec().len()
     }
 
-    fn iter(&'a self) -> std::slice::Iter<'a, Inactive> {
+    fn inactive_iter(&'a self) -> std::slice::Iter<'a, Inactive> {
         self.vec().iter()
     }
-    fn iter_mut(&'a mut self) -> std::slice::IterMut<'a, Inactive> {
+    fn inactive_iter_mut(&'a mut self) -> std::slice::IterMut<'a, Inactive> {
         self.vec_mut().iter_mut()
     }
 }
@@ -93,21 +91,17 @@ impl<Inactive> VecWithOnePosition<Inactive> {
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
     }
-    pub fn get_by_position(&self) -> Option<&Inactive> {
-        if let Some(pos) = self.position {
-            Some(&self.vec[pos.0])
-        } else {
-            None
-        }
+    pub fn get_inactive(&self) -> Option<&Inactive> {
+        self.position.map(|pos| &self.vec[pos.0])
     }
-    pub fn get_mut_by_position(&mut self) -> Option<&mut Inactive> {
+    pub fn get_mut_inactive(&mut self) -> Option<&mut Inactive> {
         if let Some(pos) = self.position {
             Some(&mut self.vec[pos.0])
         } else {
             None
         }
     }
-    pub fn set_by_position(&mut self, value: Inactive) {
+    pub fn set_inactive(&mut self, value: Inactive) {
         if let Some(pos) = self.position {
             self.vec[pos.0] = value;
         } else {
@@ -164,46 +158,34 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active
         }
     }
 
-    pub fn get_active(&self, index: usize) -> &Active {
-        &self.active[index]
-    }
-    pub fn get_active_mut(&mut self, index: usize) -> &mut Active {
-        &mut self.active[index]
-    }
-    pub fn set_active(&mut self, index: usize, value: Active) {
-        self.active[index] = value;
-    }
-    pub fn get_by_position(&self, pos: Position) -> Option<&Inactive> {
+    pub fn get_inactive(&self, pos: Position) -> Option<&Inactive> {
         self.inactive.get(pos.0)
     }
-    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut Inactive> {
+    pub fn get_mut_inactive(&mut self, pos: Position) -> Option<&mut Inactive> {
         self.inactive.get_mut(pos.0)
     }
-    pub fn set_by_position(&mut self, pos: Position, value: Inactive) {
+    pub fn set_inactive(&mut self, pos: Position, value: Inactive) {
         self.inactive[pos.0] = value;
     }
 
-    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
-        self.get_by_position(*self.active[pos_index].position())
+    pub fn get_active(&self, pos_index: usize) -> Option<&Active> {
+        self.active.get(pos_index)
     }
-    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.get_mut_by_position(*self.active[pos_index].position())
+    pub fn get_active_mut(&mut self, pos_index: usize) -> Option<&mut Active> {
+        self.active.get_mut(pos_index)
     }
-    pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
-        self.set_by_position(*self.active[pos_index].position(), value);
+    pub fn set_active(&mut self, pos_index: usize, value: Active) {
+        self.active[pos_index] = value;
     }
 
-    pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
-        self.remove(*self.active[pos_index].position())
-    }
     pub fn clear(&mut self) {
         self.inactive.clear();
         self.active.clear();
     }
-    pub fn positions_len(&self) -> usize {
+    pub fn active_len(&self) -> usize {
         self.active.len()
     }
-    pub fn positions_is_empty(&self) -> bool {
+    pub fn active_is_empty(&self) -> bool {
         self.active.is_empty()
     }
 }
@@ -281,84 +263,85 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
             self.next = Some(Position(0));
         }
     }
-    pub fn len(&self) -> usize {
+    pub fn inactive_len(&self) -> usize {
         self.resources.len()
     }
-    pub fn is_empty(&self) -> bool {
+    pub fn inactive_is_empty(&self) -> bool {
         self.resources.is_empty()
+    }
+    pub fn active_len(&self) -> usize {
+        self.allocated.len()
+    }
+    pub fn active_is_empty(&self) -> bool {
+        self.allocated.is_empty()
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<&Active> {
+    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
         if self.allocated.len() >= self.resources.len() {
             None
         } else {
-            if let Some(new) = self.allocate_rapacious::<A>() {
-                self.allocated.push(new);
-                Some(&new)
-            } else {
-                None
-            }
-        }
-    }
-    /// Reallocates a resource.
-    pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, index: usize) {
-        if let Some(new) = self.allocate_rapacious::<A>() {
-            self.allocated[index] = new;
+            self.allocate_rapacious::<A>()
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
+    pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
+        if let Some(new) = self.allocate_base::<A>() {
+            let pos = new.position();
+            self.allocated.push(new);
+            Some(*pos)
+        } else {
+            None
+        }
+    }
+    /// Reallocates a resource.
+    pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, pos: Position) {
+        if let Some(new) = self.allocate_base::<A>() {
+            self.allocated[pos.0] = new;
+        }
+    }
+    /// Allocates a resource even if all resources are busy.
+    fn allocate_base<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
-            let active = A::allocate(self.get_by_position(new_pos), new_pos);
-            let len = self.len();
-            if let Some(new_pos) = self.next {
+            if let Some(inactive) = self.get_inactive(new_pos.0) {
+                let active = A::allocate(inactive, new_pos);
+                let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
                 } else {
                     new_pos.0 + 1
                 }));
+                Some(active)
+            } else {
+                None
             }
-            Some(active)
         } else {
             None
         }
     }
 
-    pub fn get_position(&self, index: usize) -> &Position {
-        &self.allocated[index]
+    pub fn get_active(&self, pos: Position) -> &Active {
+        &self.allocated[pos.0]
     }
-    pub fn get_position_mut(&mut self, index: usize) -> &mut Position {
-        &mut self.allocated[index]
+    pub fn get_active_mut(&mut self, pos: Position) -> &mut Active {
+        &mut self.allocated[pos.0]
     }
-    pub fn set_position(&mut self, index: usize, pos: Position) {
-        self.allocated[index] = pos;
-    }
-    pub fn get_by_position(&self, pos: Position) -> Option<&Inactive> {
-        self.resources.get( pos.0)
-    }
-    pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut Inactive> {
-        self.resources.get_mut(pos.0)
-    }
-    pub fn set_by_position(&mut self, pos: Position, value: Inactive) {
-        self.resources[pos.0] = value;
+    pub fn set_active(&mut self, pos: Position, value: Active) {
+        self.allocated[pos.0] = value;
     }
 
-    pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
-        self.get_by_position(self.allocated[pos_index])
+    pub fn get_inactive(&self, pos_index: usize) -> Option<&Inactive> {
+        self.resources.get(pos_index)
     }
-    pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.get_mut_by_position(self.allocated[pos_index])
+    pub fn get_mut_inactive(&mut self, pos_index: usize) -> Option<&mut Inactive> {
+        self.resources.get_mut(pos_index)
     }
-    pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
-        self.set_by_position(self.allocated[pos_index], value);
+    pub fn set_inactive(&mut self, pos_index: usize, value: Inactive) {
+        self.resources[pos_index] = value;
     }
 
-    pub fn remove_by_position(&mut self, pos: Position) -> Inactive {
-        self.remove(pos)
-    }
-    pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
-        self.remove(self.allocated[pos_index])
+    pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
+        self.remove(*self.allocated[pos_index].position())
     }
     pub fn clear(&mut self) {
         self.resources.clear();
