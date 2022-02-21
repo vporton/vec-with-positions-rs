@@ -144,8 +144,8 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
 }
 
 pub struct VecWithPositionsVector<'a, Active: ActiveResource<'a>, Inactive> {
-    vec: Vec<Inactive>,
-    positions: Vec<Active>,
+    inactive: Vec<Inactive>,
+    active: Vec<Active>,
     phantom: PhantomData<& 'a ()>,
 }
 
@@ -158,53 +158,53 @@ impl<'a, Active: ActiveResource<'a>, Inactive> Default for VecWithPositionsVecto
 impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active, Inactive> {
     pub fn new() -> Self {
         Self {
-            vec: Vec::new(),
-            positions: Vec::new(),
+            inactive: Vec::new(),
+            active: Vec::new(),
             phantom: PhantomData::default(),
         }
     }
 
     pub fn get_active(&self, index: usize) -> &Active {
-        &self.positions[index]
+        &self.active[index]
     }
     pub fn get_active_mut(&mut self, index: usize) -> &mut Active {
-        &mut self.positions[index]
+        &mut self.active[index]
     }
     pub fn set_active(&mut self, index: usize, value: Active) {
-        self.positions[index] = value;
+        self.active[index] = value;
     }
     pub fn get_by_position(&self, pos: Position) -> Option<&Inactive> {
-        self.vec.get(pos.0)
+        self.inactive.get(pos.0)
     }
     pub fn get_mut_by_position(&mut self, pos: Position) -> Option<&mut Inactive> {
-        self.vec.get_mut(pos.0)
+        self.inactive.get_mut(pos.0)
     }
     pub fn set_by_position(&mut self, pos: Position, value: Inactive) {
-        self.vec[pos.0] = value;
+        self.inactive[pos.0] = value;
     }
 
     pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
-        self.get_by_position(*self.positions[pos_index].position())
+        self.get_by_position(*self.active[pos_index].position())
     }
     pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.get_mut_by_position(*self.positions[pos_index].position())
+        self.get_mut_by_position(*self.active[pos_index].position())
     }
     pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
-        self.set_by_position(*self.positions[pos_index].position(), value);
+        self.set_by_position(*self.active[pos_index].position(), value);
     }
 
     pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
-        self.remove(*self.positions[pos_index].position())
+        self.remove(*self.active[pos_index].position())
     }
     pub fn clear(&mut self) {
-        self.vec.clear();
-        self.positions.clear();
+        self.inactive.clear();
+        self.active.clear();
     }
     pub fn positions_len(&self) -> usize {
-        self.positions.len()
+        self.active.len()
     }
     pub fn positions_is_empty(&self) -> bool {
-        self.positions.is_empty()
+        self.active.is_empty()
     }
 }
 
@@ -212,16 +212,16 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
-        &self.vec
+        &self.inactive
     }
     fn vec_mut(&mut self) -> &mut Vec<Inactive> {
-        &mut self.vec
+        &mut self.inactive
     }
     fn positions(&'a self) -> Self::Positions {
-        Box::new(self.positions.iter().map(|value| value.position()))
+        Box::new(self.active.iter().map(|value| value.position()))
     }
     fn positions_mut(&'a mut self) -> Self::PositionsMut {
-        Box::new(self.positions.iter_mut().map(|value| value.position_mut()))
+        Box::new(self.active.iter_mut().map(|value| value.position_mut()))
     }
 }
 
