@@ -5,6 +5,7 @@
 //! TODO: `.await` mode to wait when a node is inserted.
 
 use std::iter::Chain;
+use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
@@ -13,11 +14,16 @@ pub trait Allocator<Active, Inactive> {
     fn allocate(inactive: &Inactive, pos: Position) -> Active;
 }
 
+pub trait ActiveResource<'a> {
+    fn position(&self) -> &'a Position;
+    fn position_mut(&mut self) -> &'a mut Position;
+}
+
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.
 ///
 /// Implemented partially.
-pub trait VecWithPositions<'a, Active, Inactive>
+pub trait VecWithPositions<'a, Active: ActiveResource<'a>, Inactive>
 {
     type Positions: Iterator<Item = &'a Position> + 'a;
     type PositionsMut: Iterator<Item = &'a mut Position> + 'a;
@@ -121,7 +127,7 @@ impl<Inactive> Default for VecWithOnePosition<Inactive> {
     }
 }
 
-impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOnePosition<Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOnePosition<Inactive> {
     type Positions = std::option::Iter<'a, Position>;
     type PositionsMut = std::option::IterMut<'a, Position>;
     fn vec(&self) -> &Vec<Inactive> {
@@ -138,22 +144,24 @@ impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOne
     }
 }
 
-pub struct VecWithPositionsVector<Active, Inactive> {
+pub struct VecWithPositionsVector<'a, Active: ActiveResource<'a>, Inactive> {
     vec: Vec<Inactive>,
     positions: Vec<Active>,
+    phantom: PhantomData<& 'a ()>,
 }
 
-impl<Inactive> Default for VecWithPositionsVector<Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> Default for VecWithPositionsVector<'a, Active, Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<Active, Inactive> VecWithPositionsVector<Active, Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active, Inactive> {
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
             positions: Vec::new(),
+            phantom: PhantomData::default(),
         }
     }
 
@@ -177,17 +185,17 @@ impl<Active, Inactive> VecWithPositionsVector<Active, Inactive> {
     }
 
     pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
-        self.get_by_position(self.positions[pos_index].position())
+        self.get_by_position(*self.positions[pos_index].position())
     }
     pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.get_mut_by_position(self.positions[pos_index].position())
+        self.get_mut_by_position(*self.positions[pos_index].position())
     }
     pub fn set_by_position_index(&mut self, pos_index: usize, value: Inactive) {
-        self.set_by_position(self.positions[pos_index].position(), value);
+        self.set_by_position(*self.positions[pos_index].position(), value);
     }
 
     pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
-        self.remove(self.positions[pos_index].position())
+        self.remove(*self.positions[pos_index].position())
     }
     pub fn clear(&mut self) {
         self.vec.clear();
@@ -201,13 +209,13 @@ impl<Active, Inactive> VecWithPositionsVector<Active, Inactive> {
     }
 }
 
-impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
+impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithPositionsVector<'a, Active, Inactive> {
     type Positions = std::slice::Iter<'a, Position>;
     type PositionsMut = std::slice::IterMut<'a, Position>;
-    fn vec(&self) -> &Vec<T> {
+    fn vec(&self) -> &Vec<Inactive> {
         &self.vec
     }
-    fn vec_mut(&mut self) -> &mut Vec<T> {
+    fn vec_mut(&mut self) -> &mut Vec<Inactive> {
         &mut self.vec
     }
     fn positions(&'a self) -> Self::Positions {
@@ -228,19 +236,20 @@ impl<'a, T> VecWithPositions<'a, T> for VecWithPositionsVector<T> {
 /// Nodes later than it in the range decrease their positions.
 ///
 /// TODO: Test it.
-pub struct ResourcesPool<Inactive> {
+pub struct ResourcesPool<'a, Active: ActiveResource<'a>, Inactive> {
     resources: Vec<Inactive>,
-    allocated: Vec<Position>,
+    allocated: Vec<Active>,
     next: Option<Position>, // wraps around circularly
+    phantom: PhantomData<&'a ()>
 }
 
-impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesPool<Active, Inactive> {
-    type Positions = Box<Iterator<Item = &'a Position> + 'a>;
-    type PositionsMut = Box<Iterator<Item = &'a mut Position> + 'a>;
-    fn vec(&self) -> &Vec<Active> {
+impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesPool<'a, Active, Inactive> {
+    type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
+    type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
+    fn vec(&self) -> &Vec<Inactive> {
         &self.resources
     }
-    fn vec_mut(&mut self) -> &mut Vec<Active> {
+    fn vec_mut(&mut self) -> &mut Vec<Inactive> {
         &mut self.resources
     }
     fn positions(&'a self) -> Self::Positions {
@@ -251,7 +260,7 @@ impl<'a, Active, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcesP
     }
 }
 
-impl<Active, Inactive> ResourcesPool<Active, Inactive> {
+impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactive> {
     pub fn new() -> Self {
         Self {
             resources: Vec::new(),
@@ -284,11 +293,10 @@ impl<Active, Inactive> ResourcesPool<Active, Inactive> {
         if self.allocated.len() >= self.resources.len() {
             None
         } else {
-            if let Some(new_pos) = self.allocate_rapacious() {
-                let result = self.allocated.len();
-                self.allocated.push(new_pos);
-                Some(Allocator::allocate(, new_pos))
-                Some(result)
+            if let Some(new) = self.allocate_rapacious() {
+                let new = self.allocated.len();
+                self.allocated.push(*new);
+                Some(new)
             } else {
                 None
             }
@@ -296,22 +304,26 @@ impl<Active, Inactive> ResourcesPool<Active, Inactive> {
     }
     /// Reallocates a resource.
     pub fn reallocate_position(&mut self, index: usize) {
-        if let Some(new_pos) = self.allocate_rapacious() {
-            self.allocated[index] = new_pos;
+        if let Some(new) = self.allocate_rapacious() {
+            self.allocated[index] = *new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_rapacious(&mut self) -> Option<Position> {
-        let new_pos = self.next;
-        let len = self.len();
-        if let Some(new_pos) = new_pos {
-            self.next = Some(Position(if new_pos.0 + 1 == len {
-                0
-            } else {
-                new_pos.0 + 1
-            }));
+    fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<&Active> {
+        if let Some(new_pos) = self.next {
+            let active = A::allocate(self.get_by_position(new_pos), new_pos);
+            let len = self.len();
+            if let Some(new_pos) = self.next {
+                self.next = Some(Position(if new_pos.0 + 1 == len {
+                    0
+                } else {
+                    new_pos.0 + 1
+                }));
+            }
+            active
+        } else {
+            None
         }
-        new_pos
     }
 
     pub fn get_position(&self, index: usize) -> &Position {
@@ -334,7 +346,7 @@ impl<Active, Inactive> ResourcesPool<Active, Inactive> {
     }
 
     pub fn get_by_position_index(&self, pos_index: usize) -> Option<&Inactive> {
-        self.get_by_position( self.allocated[pos_index])
+        self.get_by_position(self.allocated[pos_index])
     }
     pub fn get_mut_by_position_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
         self.get_mut_by_position(self.allocated[pos_index])
