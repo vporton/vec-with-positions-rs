@@ -4,7 +4,6 @@
 //!
 //! TODO: `.await` mode to wait when a node is inserted.
 
-use std::iter::Chain;
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -194,7 +193,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active
         self.set_by_position(*self.positions[pos_index].position(), value);
     }
 
-    pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
+    pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
         self.remove(*self.positions[pos_index].position())
     }
     pub fn clear(&mut self) {
@@ -210,8 +209,8 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active
 }
 
 impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithPositionsVector<'a, Active, Inactive> {
-    type Positions = std::slice::Iter<'a, Position>;
-    type PositionsMut = std::slice::IterMut<'a, Position>;
+    type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
+    type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
         &self.vec
     }
@@ -219,10 +218,10 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
         &mut self.vec
     }
     fn positions(&'a self) -> Self::Positions {
-        self.positions.iter()
+        Box::new(self.positions.iter().map(|value| value.position()))
     }
     fn positions_mut(&'a mut self) -> Self::PositionsMut {
-        self.positions.iter_mut()
+        Box::new(self.positions.iter_mut().map(|value| value.position_mut()))
     }
 }
 
@@ -253,10 +252,10 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
         &mut self.resources
     }
     fn positions(&'a self) -> Self::Positions {
-        Box::new(self.allocated.iter().chain(self.next.iter()))
+        Box::new(self.allocated.iter().map(|value| value.position()).chain(self.next.iter()))
     }
     fn positions_mut(&'a mut self) -> Self::PositionsMut {
-        Box::new(self.allocated.iter_mut().chain(self.next.iter_mut()))
+        Box::new(self.allocated.iter_mut().map(|value| value.position_mut()).chain(self.next.iter_mut()))
     }
 }
 
@@ -266,6 +265,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
             resources: Vec::new(),
             allocated: Vec::new(),
             next: None,
+            phantom: PhantomData::default(),
         }
     }
 
@@ -289,27 +289,26 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<Allocator>(&mut self) -> Option<usize> {
+    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<&Active> {
         if self.allocated.len() >= self.resources.len() {
             None
         } else {
-            if let Some(new) = self.allocate_rapacious() {
-                let new = self.allocated.len();
-                self.allocated.push(*new);
-                Some(new)
+            if let Some(new) = self.allocate_rapacious::<A>() {
+                self.allocated.push(new);
+                Some(&new)
             } else {
                 None
             }
         }
     }
     /// Reallocates a resource.
-    pub fn reallocate_position(&mut self, index: usize) {
-        if let Some(new) = self.allocate_rapacious() {
-            self.allocated[index] = *new;
+    pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, index: usize) {
+        if let Some(new) = self.allocate_rapacious::<A>() {
+            self.allocated[index] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<&Active> {
+    fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             let active = A::allocate(self.get_by_position(new_pos), new_pos);
             let len = self.len();
