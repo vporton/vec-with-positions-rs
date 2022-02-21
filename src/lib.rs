@@ -283,7 +283,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
+    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
             None
         } else {
@@ -291,11 +291,11 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<Position> {
+    pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
         if let Some(new) = self.allocate_base::<A>() {
-            let pos = new.position();
+            let len = self.active.len();
             self.active.push(new);
-            Some(*pos)
+            Some(len)
         } else {
             None
         }
