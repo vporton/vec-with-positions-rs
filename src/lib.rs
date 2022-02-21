@@ -319,7 +319,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcesPool<'a, Active, Inactiv
                     new_pos.0 + 1
                 }));
             }
-            active
+            Some(active)
         } else {
             None
         }
