@@ -362,6 +362,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive
     }
 }
 
+/// Tests do not pass.
 #[cfg(test)]
 mod tests {
     use crate::{Position, VecWithOnePosition, VecWithPositions};
@@ -373,7 +374,7 @@ mod tests {
         v.append(&mut input);
         v.set_position(Some(Position(3)));
         v.remove(Position(5));
-        assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
+        assert_eq!(v.inactive_iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
         assert_eq!(v.get_position(), Some(Position(3)));
     }
 
@@ -384,7 +385,7 @@ mod tests {
         v.append(&mut input);
         v.set_position(Some(Position(5)));
         v.remove(Position(5));
-        assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
+        assert_eq!(v.inactive_iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
         assert_eq!(v.get_position(), Some(Position(5)));
     }
 
@@ -395,7 +396,7 @@ mod tests {
         v.append(&mut input);
         v.set_position(Some(Position(7)));
         v.remove(Position(5));
-        assert_eq!(v.iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
+        assert_eq!(v.inactive_iter().map(|n| *n).collect::<Vec<i32>>(), vec![0, 1, 2, 3, 4, 6, 7, 8, 9]);
         assert_eq!(v.get_position(), Some(Position(6)));
     }
 }
