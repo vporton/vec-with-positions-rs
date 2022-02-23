@@ -2,8 +2,6 @@
 //!
 //! TODO: docs
 
-use std::marker::PhantomData;
-
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
 
@@ -11,19 +9,19 @@ pub trait Allocator<Active, Inactive> {
     fn allocate(inactive: &Inactive, pos: Position) -> Active;
 }
 
-pub trait ActiveResource<'a> {
-    fn position(&self) -> &'a Position;
-    fn position_mut(&mut self) -> &'a mut Position;
+pub trait ActiveResource {
+    fn position(&self) -> &Position;
+    fn position_mut(&mut self) -> &mut Position;
 }
 
 /// A `Vec` inside together with positions that move together with the elements if the `Vec`
 /// has deletions or insertions.
 ///
 /// Implemented partially.
-pub trait VecWithPositions<'a, Active: ActiveResource<'a>, Inactive>
+pub trait VecWithPositions<'a, Active: ActiveResource, Inactive>
 {
-    type Positions: Iterator<Item = &'a Position> + 'a;
-    type PositionsMut: Iterator<Item = &'a mut Position> + 'a;
+    type Positions: Iterator<Item = &'a Position>;
+    type PositionsMut: Iterator<Item = &'a mut Position>;
 
     fn vec(&self) -> &Vec<Inactive>;
     fn vec_mut(&mut self) -> &mut Vec<Inactive>;
@@ -120,7 +118,7 @@ impl<Inactive> Default for VecWithOnePosition<Inactive> {
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOnePosition<Inactive> {
+impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithOnePosition<Inactive> {
     type Positions = std::option::Iter<'a, Position>;
     type PositionsMut = std::option::IterMut<'a, Position>;
     fn vec(&self) -> &Vec<Inactive> {
@@ -137,24 +135,22 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
     }
 }
 
-pub struct VecWithPositionsVector<'a, Active: ActiveResource<'a>, Inactive> {
+pub struct VecWithPositionsVector<Active: ActiveResource, Inactive> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
-    phantom: PhantomData<& 'a ()>,
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> Default for VecWithPositionsVector<'a, Active, Inactive> {
+impl<Active: ActiveResource, Inactive> Default for VecWithPositionsVector<Active, Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active, Inactive> {
+impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> {
     pub fn new() -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
-            phantom: PhantomData::default(),
         }
     }
 
@@ -190,7 +186,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositionsVector<'a, Active
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithPositionsVector<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for VecWithPositionsVector<Active, Inactive> {
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
@@ -217,20 +213,19 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
 /// Nodes later than it in the range decrease their positions.
 ///
 /// TODO: Test it.
-pub struct ResourcePool<'a, Active: ActiveResource<'a>, Inactive> {
+pub struct ResourcePool<Active: ActiveResource, Inactive> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-    phantom: PhantomData<&'a ()>
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> Default for ResourcePool<'a, Active, Inactive> {
+impl<Active: ActiveResource, Inactive> Default for ResourcePool<Active, Inactive> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
@@ -247,13 +242,12 @@ impl<'a, Active: ActiveResource<'a>, Inactive> VecWithPositions<'a, Active, Inac
     }
 }
 
-impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive> {
+impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     pub fn new() -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
             next: None,
-            phantom: PhantomData::default(),
         }
     }
 
@@ -346,7 +340,7 @@ impl<'a, Active: ActiveResource<'a>, Inactive> ResourcePool<'a, Active, Inactive
         self.inactive[pos_index] = value;
     }
 
-    pub fn remove_by_position_index(&'a mut self, pos_index: usize) -> Inactive {
+    pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
         self.remove(*self.active[pos_index].position())
     }
     pub fn clear(&mut self) {
