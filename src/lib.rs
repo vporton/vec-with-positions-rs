@@ -3,6 +3,7 @@
 //! TODO: docs
 
 use std::future::Future;
+use std::pin::Pin;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
@@ -212,7 +213,7 @@ pub struct ResourcePool<Active: ActiveResource, Inactive> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-    allocator: fn(inactive: &Inactive, pos: Position) -> Future<Output = Active>,
+    allocator: fn(inactive: &Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>,
 }
 
 impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
@@ -233,7 +234,7 @@ impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive
 }
 
 impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
-    pub fn new(allocator: fn(inactive: &Inactive, pos: Position) -> Future<Output = Active>) -> Self {
+    pub fn new(allocator: fn(inactive: &Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>) -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
@@ -268,16 +269,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position(&mut self) -> Option<usize> {
+    pub async fn allocate_new_position(&mut self) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
             None
         } else {
-            self.allocate_rapacious()
+            self.allocate_rapacious().await
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious(&mut self) -> Option<usize> {
-        if let Some(new) = self.allocate_base() {
+    pub async fn allocate_rapacious(&mut self) -> Option<usize> {
+        if let Some(new) = self.allocate_base().await {
             let len = self.active.len();
             self.active.push(new);
             Some(len)
@@ -286,16 +287,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
     /// Reallocates a resource.
-    pub fn reallocate_position(&mut self, pos: Position) {
-        if let Some(new) = self.allocate_base() {
+    pub async fn reallocate_position(&mut self, pos: Position) {
+        if let Some(new) = self.allocate_base().await {
             self.active[pos.0] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_base(&mut self) -> Option<Active> {
+    async fn allocate_base(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
-                let active = (self.allocator)(inactive, new_pos).await;
+                let active = Box::pin(self.allocator)(inactive, new_pos).await;
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
