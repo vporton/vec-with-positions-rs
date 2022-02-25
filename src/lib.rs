@@ -209,14 +209,14 @@ impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive
 /// Nodes later than it in the range decrease their positions.
 ///
 /// TODO: Test it.
-pub struct ResourcePool<Active: ActiveResource, Inactive> {
+pub struct ResourcePool<Active: ActiveResource, Inactive: Clone> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-    allocator: fn(inactive: &Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>,
+    allocator: fn(inactive: Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>,
 }
 
-impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
+impl<'a, Active: ActiveResource, Inactive: Clone> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
     type Positions = Box<dyn Iterator<Item = &'a Position> + 'a>;
     type PositionsMut = Box<dyn Iterator<Item = &'a mut Position> + 'a>;
     fn vec(&self) -> &Vec<Inactive> {
@@ -233,8 +233,8 @@ impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive
     }
 }
 
-impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
-    pub fn new(allocator: fn(inactive: &Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>) -> Self {
+impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive> {
+    pub fn new(allocator: fn(inactive: Inactive, pos: Position) -> Pin<Box<dyn Future<Output = Active>>>) -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
@@ -296,7 +296,7 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     async fn allocate_base(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
-                let active = Box::pin(self.allocator)(inactive, new_pos).await;
+                let active = Box::pin(self.allocator)(inactive.clone(), new_pos).await;
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
