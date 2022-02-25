@@ -6,7 +6,8 @@
 pub struct Position(pub usize); // TODO: pub?
 
 pub trait Allocator<Active: ActiveResource, Inactive> {
-    fn allocate(pool: &ResourcePool<Active, Inactive>, inactive: &Inactive, pos: Position) -> Active;
+    type Data;
+    fn allocate(pool: &Self::Data, inactive: &Inactive, pos: Position) -> Active;
 }
 
 pub trait ActiveResource: Clone {
@@ -274,7 +275,7 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
+    pub fn allocate_new_position<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
             None
         } else {
@@ -282,7 +283,7 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
+    pub fn allocate_rapacious<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<usize> {
         if let Some(new) = self.allocate_base::<A>() {
             let len = self.active.len();
             self.active.push(new);
@@ -292,13 +293,13 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
     /// Reallocates a resource.
-    pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, pos: Position) {
+    pub fn reallocate_position<A: Allocator<Active, Inactive, Data = Self>>(&mut self, pos: Position) {
         if let Some(new) = self.allocate_base::<A>() {
             self.active[pos.0] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_base<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
+    fn allocate_base<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
                 let active = A::allocate(self, inactive, new_pos);
