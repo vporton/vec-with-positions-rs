@@ -5,10 +5,6 @@
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
 
-pub trait Allocator<Active: ActiveResource, Inactive> {
-    fn allocate(pool: &ResourcePool<Active, Inactive>, inactive: &Inactive, pos: Position) -> Active;
-}
-
 pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
     fn position_mut(&mut self) -> &mut Position;
@@ -214,12 +210,7 @@ pub struct ResourcePool<Active: ActiveResource, Inactive> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-}
-
-impl<Active: ActiveResource, Inactive> Default for ResourcePool<Active, Inactive> {
-    fn default() -> Self {
-        Self::new()
-    }
+    allocator: fn(inactive: &Inactive, pos: Position) -> Active,
 }
 
 impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
@@ -240,11 +231,12 @@ impl<'a, Active: ActiveResource, Inactive> VecWithPositions<'a, Active, Inactive
 }
 
 impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
-    pub fn new() -> Self {
+    pub fn new(allocator: fn(inactive: &Inactive, pos: Position) -> Active) -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
             next: None,
+            allocator,
         }
     }
 
@@ -274,16 +266,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
+    pub fn allocate_new_position(&mut self) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
             None
         } else {
-            self.allocate_rapacious::<A>()
+            self.allocate_rapacious()
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious<A: Allocator<Active, Inactive>>(&mut self) -> Option<usize> {
-        if let Some(new) = self.allocate_base::<A>() {
+    pub fn allocate_rapacious(&mut self) -> Option<usize> {
+        if let Some(new) = self.allocate_base() {
             let len = self.active.len();
             self.active.push(new);
             Some(len)
@@ -292,16 +284,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
     /// Reallocates a resource.
-    pub fn reallocate_position<A: Allocator<Active, Inactive>>(&mut self, pos: Position) {
-        if let Some(new) = self.allocate_base::<A>() {
+    pub fn reallocate_position(&mut self, pos: Position) {
+        if let Some(new) = self.allocate_base() {
             self.active[pos.0] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_base<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
+    fn allocate_base(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
-                let active = A::allocate(self, inactive, new_pos);
+                let active = (self.allocator)(inactive, new_pos);
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
