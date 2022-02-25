@@ -5,11 +5,6 @@
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
 
-pub trait Allocator<Active: ActiveResource, Inactive> {
-    type Data;
-    fn allocate(pool: &Self::Data, inactive: &Inactive, pos: Position) -> Active;
-}
-
 pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
     fn position_mut(&mut self) -> &mut Position;
