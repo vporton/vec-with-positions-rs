@@ -5,8 +5,8 @@
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Position(pub usize); // TODO: pub?
 
-pub trait Allocator<Active, Inactive> {
-    fn allocate(inactive: &Inactive, pos: Position) -> Active;
+pub trait Allocator<Active: ActiveResource, Inactive> {
+    fn allocate(pool: &ResourcePool<Active, Inactive>, inactive: &Inactive, pos: Position) -> Active;
 }
 
 pub trait ActiveResource: Clone {
@@ -301,7 +301,7 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     fn allocate_base<A: Allocator<Active, Inactive>>(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
-                let active = A::allocate(inactive, new_pos);
+                let active = A::allocate(self, inactive, new_pos);
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
