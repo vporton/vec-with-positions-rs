@@ -9,7 +9,7 @@ pub trait Allocator<Active, Inactive> {
     fn allocate(inactive: &Inactive, pos: Position) -> Active;
 }
 
-pub trait ActiveResource {
+pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
     fn position_mut(&mut self) -> &mut Position;
 }
@@ -164,11 +164,8 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
         self.inactive[pos.0] = value;
     }
 
-    pub fn get_active(&self, pos_index: usize) -> Option<&Active> {
-        self.active.get(pos_index)
-    }
-    pub fn get_active_mut(&mut self, pos_index: usize) -> Option<&mut Active> {
-        self.active.get_mut(pos_index)
+    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
+        self.active.get(pos_index).map(|v| v.clone())
     }
     pub fn set_active(&mut self, pos_index: usize, value: Active) {
         self.active[pos_index] = value;
@@ -320,11 +317,8 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
 
-    pub fn get_active(&self, pos: Position) -> &Active {
-        &self.active[pos.0]
-    }
-    pub fn get_active_mut(&mut self, pos: Position) -> &mut Active {
-        &mut self.active[pos.0]
+    pub fn get_active(&self, pos: Position) -> Active {
+        self.active[pos.0].clone()
     }
     pub fn set_active(&mut self, pos: Position, value: Active) {
         self.active[pos.0] = value;
