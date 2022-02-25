@@ -275,16 +275,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
     }
 
     /// Allocates a resource if there are free resources.
-    pub fn allocate_new_position<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<usize> {
+    pub fn allocate_new_position(&mut self, cb: fn(inactive: &Inactive, pos: Position) -> Active) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
             None
         } else {
-            self.allocate_rapacious::<A>()
+            self.allocate_rapacious(cb)
         }
     }
     /// Allocates a resource even if all resources are busy.
-    pub fn allocate_rapacious<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<usize> {
-        if let Some(new) = self.allocate_base::<A>() {
+    pub fn allocate_rapacious(&mut self, cb: fn(inactive: &Inactive, pos: Position) -> Active) -> Option<usize> {
+        if let Some(new) = self.allocate_base(cb) {
             let len = self.active.len();
             self.active.push(new);
             Some(len)
@@ -293,16 +293,16 @@ impl<'a, Active: ActiveResource, Inactive> ResourcePool<Active, Inactive> {
         }
     }
     /// Reallocates a resource.
-    pub fn reallocate_position<A: Allocator<Active, Inactive, Data = Self>>(&mut self, pos: Position) {
-        if let Some(new) = self.allocate_base::<A>() {
+    pub fn reallocate_position(&mut self, pos: Position, cb: fn(inactive: &Inactive, pos: Position) -> Active) {
+        if let Some(new) = self.allocate_base(cb) {
             self.active[pos.0] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    fn allocate_base<A: Allocator<Active, Inactive, Data = Self>>(&mut self) -> Option<Active> {
+    fn allocate_base(&mut self, cb: fn(inactive: &Inactive, pos: Position) -> Active) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos.0) {
-                let active = A::allocate(self, inactive, new_pos);
+                let active = cb(inactive, new_pos);
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
