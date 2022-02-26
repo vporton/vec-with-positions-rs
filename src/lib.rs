@@ -213,7 +213,7 @@ pub struct ResourcePool<Active: ActiveResource, Inactive: Clone> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-    allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active>>> + Send + Sync>,
+    allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>,
 }
 
 impl<'a, Active: ActiveResource, Inactive: Clone> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
@@ -234,7 +234,7 @@ impl<'a, Active: ActiveResource, Inactive: Clone> VecWithPositions<'a, Active, I
 }
 
 impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive> {
-    pub fn new(allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active>>> + Send + Sync>) -> Self {
+    pub fn new(allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>) -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
