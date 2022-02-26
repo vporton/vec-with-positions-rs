@@ -312,8 +312,8 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         }
     }
 
-    pub fn get_active(&self, pos: Position) -> Active {
-        self.active[pos.0].clone()
+    pub fn get_active(&self, pos: Position) -> Option<Active> {
+        self.active.get(pos.0).map(|v| v.clone())
     }
     pub fn set_active(&mut self, pos: Position, value: Active) {
         self.active[pos.0] = value;
