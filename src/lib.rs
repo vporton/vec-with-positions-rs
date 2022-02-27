@@ -295,7 +295,7 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     /// Allocates a resource even if all resources are busy.
     async fn allocate_base(&mut self) -> Option<Active> {
         if let Some(new_pos) = self.next {
-            if let Some(inactive) = self.get_inactive(new_pos.0) {
+            if let Some(inactive) = self.get_inactive(new_pos) {
                 let active = (self.allocator)(inactive.clone(), new_pos).await;
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
@@ -312,21 +312,40 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         }
     }
 
-    pub fn get_active(&self, pos: Position) -> Option<Active> {
-        self.active.get(pos.0).map(|v| v.clone())
+    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
+        self.active.get(pos_index).map(|v| v.clone())
     }
-    pub fn set_active(&mut self, pos: Position, value: Active) {
-        self.active[pos.0] = value;
+    pub fn set_active(&mut self, pos_index: usize, value: Active) {
+        self.active[pos_index] = value;
     }
 
-    pub fn get_inactive(&self, pos_index: usize) -> Option<&Inactive> {
-        self.inactive.get(pos_index)
+    pub fn get_inactive(&self, pos: Position) -> Option<&Inactive> {
+        self.inactive.get(pos.0)
     }
-    pub fn get_mut_inactive(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        self.inactive.get_mut(pos_index)
+    pub fn get_mut_inactive(&mut self, pos: Position) -> Option<&mut Inactive> {
+        self.inactive.get_mut(pos.0)
     }
-    pub fn set_inactive(&mut self, pos_index: usize, value: Inactive) {
-        self.inactive[pos_index] = value;
+    pub fn set_inactive(&mut self, pos: Position, value: Inactive) {
+        self.inactive[pos.0] = value;
+    }
+    pub fn get_inactive_by_pos_index(&self, pos_index: usize) -> Option<&Inactive> {
+        if let Some(active) = self.get_active(pos_index) {
+            self.get_inactive(*active.position())
+        } else {
+            None
+        }
+    }
+    pub fn get_inactive_mut_by_pos_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
+        if let Some(active) = self.get_active(pos_index) {
+            self.get_inactive_mut(*active.position())
+        } else {
+            None
+        }
+    }
+    pub fn set_inactive_by_pos_index(&mut self, pos_index: usize, value: Inactive) {
+        if let Some(active) = self.get_active(pos_index) {
+            self.set_inactive(*active.position(), value);
+        }
     }
 
     pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
