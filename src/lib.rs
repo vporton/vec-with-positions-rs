@@ -348,6 +348,13 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         }
     }
 
+    pub fn remove(&mut self, pos: Position) -> Inactive {
+        let result = VecWithPositions::remove(self, pos);
+        while self.active_len() > self.inactive_len() {
+            self.active.pop();
+        }
+        result
+    }
     pub fn remove_by_position_index(&mut self, pos_index: usize) -> Inactive {
         self.remove(*self.active[pos_index].position())
     }
