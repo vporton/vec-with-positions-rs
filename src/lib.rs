@@ -213,7 +213,7 @@ pub struct ResourcePool<Active: ActiveResource, Inactive: Clone> {
     inactive: Vec<Inactive>,
     active: Vec<Active>,
     next: Option<Position>, // wraps around circularly
-    allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>,
+    allocator: Box<dyn Fn(Inactive, Position, usize) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>,
 }
 
 impl<'a, Active: ActiveResource, Inactive: Clone> VecWithPositions<'a, Active, Inactive> for ResourcePool<Active, Inactive> {
@@ -234,7 +234,7 @@ impl<'a, Active: ActiveResource, Inactive: Clone> VecWithPositions<'a, Active, I
 }
 
 impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive> {
-    pub fn new(allocator: Box<dyn Fn(Inactive, Position) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>) -> Self {
+    pub fn new(allocator: Box<dyn Fn(Inactive, Position, usize) -> Pin<Box<dyn Future<Output = Active> + Send + Sync>> + Send + Sync>) -> Self {
         Self {
             inactive: Vec::new(),
             active: Vec::new(),
@@ -278,8 +278,8 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     }
     /// Allocates a resource even if all resources are busy.
     pub async fn allocate_rapacious(&mut self) -> Option<usize> {
-        if let Some(new) = self.allocate_base().await {
-            let len = self.active.len();
+        let len = self.active.len();
+        if let Some(new) = self.allocate_base(len).await {
             self.active.push(new);
             Some(len)
         } else {
@@ -288,15 +288,15 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     }
     /// Reallocates a resource.
     pub async fn reallocate_position(&mut self, pos_index: usize) {
-        if let Some(new) = self.allocate_base().await {
+        if let Some(new) = self.allocate_base(pos_index).await {
             self.active[pos_index] = new;
         }
     }
     /// Allocates a resource even if all resources are busy.
-    async fn allocate_base(&mut self) -> Option<Active> {
+    async fn allocate_base(&mut self, pos_index: usize) -> Option<Active> {
         if let Some(new_pos) = self.next {
             if let Some(inactive) = self.get_inactive(new_pos) {
-                let active = (self.allocator)(inactive.clone(), new_pos).await;
+                let active = (self.allocator)(inactive.clone(), new_pos, pos_index).await;
                 let len = self.inactive_len();
                 self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
