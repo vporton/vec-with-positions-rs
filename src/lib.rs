@@ -296,19 +296,22 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     }
     /// Allocates a resource even if all resources are busy.
     async fn allocate_base(&mut self, pos_index: usize) -> Option<Active> {
-        if let Some(new_pos) = self.next {
-            if let Some(inactive) = self.get_inactive(new_pos) {
-                let active = (self.allocator)(inactive.clone(), new_pos, pos_index).await;
-                let len = self.inactive_len();
-                self.next = Some(Position(if new_pos.0 + 1 == len {
-                    0
-                } else {
-                    new_pos.0 + 1
-                }));
-                Some(active)
-            } else {
-                None
-            }
+        let new_pos = if let Some(new_pos) = self.next {
+            new_pos
+        } else {
+            Position(0)
+        };
+
+        let len = self.inactive_len();
+        self.next = Some(Position(if new_pos.0 + 1 == len {
+            0
+        } else {
+            new_pos.0 + 1
+        }));
+
+        if let Some(inactive) = self.get_inactive(new_pos) {
+            let active = (self.allocator)(inactive.clone(), new_pos, pos_index).await;
+            Some(active)
         } else {
             None
         }
