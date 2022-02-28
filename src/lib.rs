@@ -300,7 +300,7 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
             if let Some(inactive) = self.get_inactive(new_pos) {
                 let active = (self.allocator)(inactive.clone(), new_pos, pos_index).await;
                 let len = self.inactive_len();
-                self.next = Some(Position(if new_pos.0 == len {
+                self.next = Some(Position(if new_pos.0 + 1 == len {
                     0
                 } else {
                     new_pos.0 + 1
