@@ -289,7 +289,9 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     /// Reallocates a resource.
     pub async fn reallocate_position(&mut self, pos_index: usize) {
         if let Some(new) = self.allocate_base(pos_index).await {
-            self.active[pos_index] = new;
+            if pos_index < self.active.len() {
+                self.active[pos_index] = new;
+            }
         }
     }
     /// Allocates a resource even if all resources are busy.
