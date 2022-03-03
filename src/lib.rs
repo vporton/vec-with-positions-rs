@@ -32,7 +32,7 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
         }
     }
 
-    pub fn remove(&mut self, pos_index: usize) -> Inactive {
+    pub fn remove(&mut self, pos_index: usize) -> Inactive { // TODO: Duplicate code.
         let pos = *self.active[pos_index].position();
         let result = self.inactive.remove(pos.0);
         self.active.iter_mut().for_each(|p| {
@@ -125,6 +125,19 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         if self.next.is_none() {
             self.next = Some(Position(0));
         }
+    }
+    pub fn remove(&mut self, pos_index: usize) -> Inactive { // TODO: Duplicate code.
+        let pos = *self.active[pos_index].position();
+        let result = self.inactive.remove(pos.0);
+        self.active.iter_mut().for_each(|p| {
+            let mut p2 = p.position_mut();
+            if p2.0 > pos.0 {
+                p2.0 -= 1;
+            }
+        });
+        self.active.remove(pos_index);
+        result
+
     }
     pub fn inactive_len(&self) -> usize {
         self.inactive.len()
