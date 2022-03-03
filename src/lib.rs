@@ -6,7 +6,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 #[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Position(pub usize); // TODO: pub?
+pub struct Position(usize); // TODO: pub?
 
 pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
