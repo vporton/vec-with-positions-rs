@@ -228,13 +228,6 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         self.inactive.clear();
         self.active.clear();
     }
-
-    pub fn allocated_len(&self) -> usize {
-        self.active.len()
-    }
-    pub fn allocated_is_empty(&self) -> bool {
-        self.active.is_empty()
-    }
 }
 
 /// Tests do not pass.
