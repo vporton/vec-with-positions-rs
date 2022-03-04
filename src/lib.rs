@@ -11,6 +11,8 @@ pub struct Position(usize); // TODO: pub?
 pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
     fn position_mut(&mut self) -> &mut Position;
+    fn pos_index(&self) -> usize;
+    fn pos_index_mut(&mut self) -> usize;
 }
 
 pub struct VecWithPositionsVector<Active: ActiveResource, Inactive> {
@@ -32,8 +34,8 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
         }
     }
 
-    pub fn remove(&mut self, pos_index: usize) -> Inactive { // TODO: Duplicate code.
-        let pos = *self.active[pos_index].position();
+    pub fn remove(&mut self, active: &Active) -> Inactive { // TODO: Duplicate code.
+        let pos = *self.active[active.pos_index()].position();
         let result = self.inactive.remove(pos.0);
         self.active.iter_mut().for_each(|p| {
             let mut p2 = p.position_mut();
@@ -41,7 +43,7 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
                 p2.0 -= 1;
             }
         });
-        self.active.remove(pos_index);
+        self.active.remove(active.pos_index());
         result
     }
     pub fn push(&mut self, value: Inactive) {
@@ -61,11 +63,11 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
         self.inactive[pos.0] = value;
     }
 
-    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
-        self.active.get(pos_index).map(|v| v.clone())
+    pub fn get_active(&self, active: &Active) -> Option<Active> {
+        self.active.get(active.pos_index()).map(|v| v.clone())
     }
-    pub fn set_active(&mut self, pos_index: usize, value: Active) {
-        self.active[pos_index] = value;
+    pub fn set_active(&mut self, active: &Active, value: Active) {
+        self.active[active.pos_index()] = value;
     }
 
     pub fn inactive_is_empty(&self) -> bool {
@@ -126,8 +128,8 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
             self.next = Some(Position(0));
         }
     }
-    pub fn remove(&mut self, pos_index: usize) -> Inactive { // TODO: Duplicate code.
-        let pos = *self.active[pos_index].position();
+    pub fn remove(&mut self, active: &Active) -> Inactive { // TODO: Duplicate code.
+        let pos = *self.active[active.pos_index()].position();
         let result = self.inactive.remove(pos.0);
         self.active.iter_mut().for_each(|p| {
             let mut p2 = p.position_mut();
@@ -135,7 +137,7 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
                 p2.0 -= 1;
             }
         });
-        self.active.remove(pos_index);
+        self.active.remove(active.pos_index());
         result
 
     }
@@ -171,11 +173,12 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         }
     }
     /// Reallocates a resource.
-    pub async fn reallocate_position(&mut self, pos_index: usize) {
-        if let Some(new) = self.allocate_base(pos_index).await {
-            if pos_index < self.active.len() {
-                self.active[pos_index] = new;
-            }
+    pub async fn reallocate_position(&mut self, active: &Active) -> Option<Active> {
+        if let Some(new) = self.allocate_base(active.pos_index()).await {
+            self.active[active.pos_index()] = new;
+            Some(self.active[active.pos_index()].clone())
+        } else {
+            None
         }
     }
     /// Allocates a resource even if all resources are busy.
@@ -201,13 +204,6 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         }
     }
 
-    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
-        self.active.get(pos_index).map(|v| v.clone())
-    }
-    pub fn set_active(&mut self, pos_index: usize, value: Active) {
-        self.active[pos_index] = value;
-    }
-
     pub fn get_inactive(&self, pos: Position) -> Option<&Inactive> {
         self.inactive.get(pos.0)
     }
@@ -216,25 +212,6 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
     }
     pub fn set_inactive(&mut self, pos: Position, value: Inactive) {
         self.inactive[pos.0] = value;
-    }
-    pub fn get_inactive_by_pos_index(&self, pos_index: usize) -> Option<&Inactive> {
-        if let Some(active) = self.get_active(pos_index) {
-            self.get_inactive(*active.position())
-        } else {
-            None
-        }
-    }
-    pub fn get_inactive_mut_by_pos_index(&mut self, pos_index: usize) -> Option<&mut Inactive> {
-        if let Some(active) = self.get_active(pos_index) {
-            self.get_mut_inactive(*active.position())
-        } else {
-            None
-        }
-    }
-    pub fn set_inactive_by_pos_index(&mut self, pos_index: usize, value: Inactive) {
-        if let Some(active) = self.get_active(pos_index) {
-            self.set_inactive(*active.position(), value);
-        }
     }
 
     pub fn clear(&mut self) {
