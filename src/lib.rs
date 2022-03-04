@@ -12,7 +12,6 @@ pub trait ActiveResource: Clone {
     fn position(&self) -> &Position;
     fn position_mut(&mut self) -> &mut Position;
     fn pos_index(&self) -> usize;
-    fn pos_index_mut(&mut self) -> usize;
 }
 
 pub struct VecWithPositionsVector<Active: ActiveResource, Inactive> {
