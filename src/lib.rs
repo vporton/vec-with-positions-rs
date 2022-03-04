@@ -127,17 +127,16 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
             self.next = Some(Position(0));
         }
     }
-    pub fn remove(&mut self, active: &Active) -> Inactive { // TODO: Duplicate code.
+    pub async fn remove(&mut self, active: &Active) -> Option<Active> { // TODO: Duplicate code.
         let pos = *self.active[active.pos_index()].position();
-        let result = self.inactive.remove(pos.0);
+        self.inactive.remove(pos.0);
         self.active.iter_mut().for_each(|p| {
             let mut p2 = p.position_mut();
             if p2.0 > pos.0 {
                 p2.0 -= 1;
             }
         });
-        self.active.remove(active.pos_index());
-        result
+        self.reallocate_position(active).await
 
     }
     pub fn inactive_len(&self) -> usize {
