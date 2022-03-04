@@ -62,12 +62,12 @@ impl<Active: ActiveResource, Inactive> VecWithPositionsVector<Active, Inactive> 
         self.inactive[pos.0] = value;
     }
 
-    pub fn get_active(&self, active: &Active) -> Option<Active> {
-        self.active.get(active.pos_index()).map(|v| v.clone())
+    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
+        self.active.get(pos_index).map(|v| v.clone())
     }
-    pub fn set_active(&mut self, active: &Active, value: Active) {
-        self.active[active.pos_index()] = value;
-    }
+    // pub fn set_active(&mut self, active: &Active, value: Active) {
+    //     self.active[active.pos_index()] = value;
+    // }
 
     pub fn inactive_is_empty(&self) -> bool {
         self.inactive.is_empty()
