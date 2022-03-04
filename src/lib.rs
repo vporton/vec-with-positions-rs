@@ -153,6 +153,10 @@ impl<'a, Active: ActiveResource, Inactive: Clone> ResourcePool<Active, Inactive>
         self.active.is_empty()
     }
 
+    pub fn get_active(&self, pos_index: usize) -> Option<Active> {
+        self.active.get(pos_index).map(|v| v.clone())
+    }
+
     /// Allocates a resource if there are free resources.
     pub async fn allocate_new_position(&mut self) -> Option<usize> {
         if self.active.len() >= self.inactive.len() {
